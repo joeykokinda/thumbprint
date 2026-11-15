@@ -48,22 +48,27 @@ function clearMarks(article) {
   article.querySelectorAll(".tp-badge, .tp-warning").forEach((node) => node.remove());
 }
 
-function markCertified(article, post, result) {
-  article.classList.add("tp-certified");
-  const badge = element("span", "tp-badge");
-  badge.tabIndex = 0;
-  badge.innerHTML = FINGERPRINT_ICON;
-  badge.append(element("span", "tp-badge-label", "Thumbprint"));
+// The detail card lives on <body> with fixed positioning: inside a post it gets clipped
+// by the timeline column and painted over by quoted posts.
+let openCard = null;
+let hideTimer = null;
 
-  const card = element("span", "tp-card");
-  const heading = element("span", "tp-card-heading");
+function hideCard() {
+  openCard?.remove();
+  openCard = null;
+}
+
+function showCard(badge, result) {
+  clearTimeout(hideTimer);
+  hideCard();
+  const card = element("div", "tp-card");
+  const heading = element("div", "tp-card-heading");
   heading.innerHTML = FINGERPRINT_ICON;
   heading.append(element("span", null, "Approved on a real device"));
-  card.append(heading);
-  card.append(element("span", "tp-card-line", "A person pressed their thumb on a Seeker to approve this exact post."));
-  const facts = element("span", "tp-card-facts");
+  card.append(heading, element("div", "tp-card-line", "A person pressed their thumb on a Seeker to approve this exact post."));
+  const facts = element("div", "tp-card-facts");
   const addFact = (label, value) => {
-    const row = element("span", "tp-card-fact");
+    const row = element("div", "tp-card-fact");
     row.append(element("span", "tp-card-fact-label", label), element("span", "tp-card-fact-value", value));
     facts.append(row);
   };
@@ -78,7 +83,37 @@ function markCertified(article, post, result) {
     link.rel = "noopener";
     card.append(link);
   }
-  badge.append(card);
+  card.addEventListener("mouseenter", () => clearTimeout(hideTimer));
+  card.addEventListener("mouseleave", scheduleHide);
+  document.body.append(card);
+  const anchor = badge.getBoundingClientRect();
+  const size = card.getBoundingClientRect();
+  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - size.width - 8));
+  const below = anchor.bottom + 8;
+  const top = below + size.height > window.innerHeight - 8 ? Math.max(8, anchor.top - size.height - 8) : below;
+  card.style.left = `${left}px`;
+  card.style.top = `${top}px`;
+  openCard = card;
+}
+
+function scheduleHide() {
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(hideCard, 200);
+}
+window.addEventListener("scroll", hideCard, { passive: true });
+
+function markCertified(article, post, result) {
+  article.classList.add("tp-certified");
+  const badge = element("span", "tp-badge");
+  badge.tabIndex = 0;
+  badge.setAttribute("role", "button");
+  badge.setAttribute("aria-label", "Thumbprint: approved on a real device. Show details.");
+  badge.innerHTML = FINGERPRINT_ICON;
+  badge.append(element("span", "tp-badge-label", "Thumbprint"));
+  badge.addEventListener("mouseenter", () => showCard(badge, result));
+  badge.addEventListener("focus", () => showCard(badge, result));
+  badge.addEventListener("mouseleave", scheduleHide);
+  badge.addEventListener("blur", scheduleHide);
   badge.addEventListener("click", (event) => event.stopPropagation());
   post.nameElement.append(badge);
 }
@@ -169,13 +204,19 @@ function setButtonState(button, state, label) {
 
 function addComposerButtons() {
   for (const postButton of document.querySelectorAll('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]')) {
-    const container = postButton.parentElement;
+    // X wraps Post in a column that fades when the composer is empty; the row around
+    // that wrapper is where a sibling button sits level with Post.
+    const wrapper = postButton.parentElement;
+    const container = wrapper?.parentElement;
     if (!container || container.querySelector(".tp-button")) continue;
+    const inline = postButton.dataset.testid === "tweetButtonInline"; // tight on space
+    const idleLabel = inline ? "Thumbprint" : "Post with Thumbprint";
     const button = element("button", "tp-button");
     button.type = "button";
     button.innerHTML = FINGERPRINT_ICON;
     button.append(element("span", "tp-button-label"));
-    setButtonState(button, "idle", "Post with Thumbprint");
+    button.title = "Post with Thumbprint: approve this post on your Seeker";
+    setButtonState(button, "idle", idleLabel);
     button.addEventListener("click", async () => {
       const handle = myHandle();
       const text = composerText(container);
@@ -193,9 +234,9 @@ function addComposerButtons() {
       } else {
         setButtonState(button, "error", response?.reason || "Not approved");
       }
-      setTimeout(() => setButtonState(button, "idle", "Post with Thumbprint"), 4000);
+      setTimeout(() => setButtonState(button, "idle", idleLabel), 4000);
     });
-    container.prepend(button);
+    wrapper.before(button);
   }
 }
 
