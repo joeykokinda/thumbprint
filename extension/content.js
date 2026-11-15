@@ -6,6 +6,8 @@ const svg = (body) =>
   `<svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 const ICONS = {
   mark: svg('<path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/>'),
+  // Same glyph with a strike, so "not signed" does not rely on color alone.
+  unsigned: svg('<path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/><path d="M3 3l18 18" stroke-width="2.5"/>'),
   check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   alert: svg('<path d="M12 4 2.8 20h18.4L12 4z"/><path d="M12 10v4.5"/><path d="M12 17.4v.1"/>'),
   spinner: svg('<path d="M12 3a9 9 0 1 0 9 9"/>'),
@@ -198,6 +200,16 @@ function markUnsigned(post) {
   }
   notice.addEventListener("click", (event) => event.stopPropagation());
   post.textElement.before(notice);
+
+  const mark = iconElement("unsigned", links.length ? "tp-mark tp-mark-unsigned tp-mark-danger" : "tp-mark tp-mark-unsigned");
+  mark.setAttribute("role", "img");
+  mark.setAttribute("aria-label", "Not signed");
+  mark.title = `Not signed: ${name} signs posts with Thumbprint, and this one was not approved on their device`;
+  mark.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  (post.profileLink.firstElementChild || post.profileLink).append(mark);
 }
 
 let dimUnsigned = false;

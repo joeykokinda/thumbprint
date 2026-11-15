@@ -56,7 +56,7 @@
   position: absolute;
   inset: -4px;
   border-radius: 50%;
-  background: var(--tp-accent);
+  background: currentColor;
   opacity: 0;
   transition: opacity 150ms ease-out;
 }
@@ -69,6 +69,13 @@
 }
 .tp-mark .tp-icon {
   position: relative;
+}
+.tp-mark-unsigned {
+  color: var(--tp-warn);
+  cursor: help;
+}
+.tp-mark-danger {
+  color: var(--tp-danger);
 }
 
 /* ---- Detail card ---- */
