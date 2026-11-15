@@ -1,8 +1,15 @@
 // Thumbprint content script for x.com.
-// Marks posts approved on a Seeker, warns on unsigned posts from accounts that sign,
-// and adds "Post with Thumbprint" to the composer. All network goes through background.js.
+// Marks posts approved on a Seeker, flags unsigned posts from accounts that sign,
+// and adds a "Sign with Thumbprint" control to the composer. Network goes through background.js.
 
-const FINGERPRINT_ICON = `<svg class="tp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg>`;
+const svg = (body) =>
+  `<svg class="tp-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const ICONS = {
+  mark: svg('<path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/>'),
+  check: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  alert: svg('<path d="M12 4 2.8 20h18.4L12 4z"/><path d="M12 10v4.5"/><path d="M12 17.4v.1"/>'),
+  spinner: svg('<path d="M12 3a9 9 0 1 0 9 9"/>'),
+};
 
 // Text as the author typed it: emoji come from <img alt>, shortened links are skipped.
 function visibleText(node) {
@@ -14,7 +21,8 @@ function visibleText(node) {
 
 function readPost(article) {
   const textElement = article.querySelector('[data-testid="tweetText"]');
-  const profileLink = article.querySelector('[data-testid="User-Name"] a[href^="/"]');
+  const nameElement = article.querySelector('[data-testid="User-Name"]');
+  const profileLink = nameElement?.querySelector('a[href^="/"]');
   if (!textElement || !profileLink) return null;
   const text = normalizeText(visibleText(textElement));
   if (!text) return null;
@@ -23,7 +31,7 @@ function readPost(article) {
     text,
     postedAt: article.querySelector("time")?.dateTime || null,
     textElement,
-    nameElement: article.querySelector('[data-testid="User-Name"]'),
+    profileLink,
   };
 }
 
@@ -34,50 +42,68 @@ function element(tag, className, text) {
   return node;
 }
 
-function timeAgo(isoOrSeconds) {
-  const then = typeof isoOrSeconds === "number" ? isoOrSeconds * 1000 : Date.parse(isoOrSeconds);
-  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (minutes < 1440) return `${Math.round(minutes / 60)}h ago`;
-  return `${Math.round(minutes / 1440)}d ago`;
+function iconElement(name, className) {
+  const wrapper = element("span", className);
+  wrapper.innerHTML = ICONS[name];
+  return wrapper;
 }
 
-function clearMarks(article) {
-  article.classList.remove("tp-certified", "tp-unsigned", "tp-dim");
-  article.querySelectorAll(".tp-badge, .tp-warning").forEach((node) => node.remove());
+// X ships three themes and gives no stable class for them, so read the page background.
+function applyTheme() {
+  const channels = getComputedStyle(document.body).backgroundColor.match(/\d+/g)?.map(Number) || [255, 255, 255];
+  const brightness = channels[0] + channels[1] + channels[2];
+  document.documentElement.dataset.tpTheme = brightness > 600 ? "light" : brightness > 30 ? "dim" : "dark";
 }
 
-// The detail card lives on <body> with fixed positioning: inside a post it gets clipped
-// by the timeline column and painted over by quoted posts.
+// ---- Detail card (on <body>, fixed: inside a post it is clipped and painted over) ----
+
 let openCard = null;
+let showTimer = null;
 let hideTimer = null;
 
 function hideCard() {
+  clearTimeout(showTimer);
   openCard?.remove();
   openCard = null;
 }
 
-function showCard(badge, result) {
+function scheduleHide() {
+  clearTimeout(showTimer);
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(hideCard, 180);
+}
+
+function showCard(anchor, result) {
   clearTimeout(hideTimer);
   hideCard();
   const card = element("div", "tp-card");
-  const heading = element("div", "tp-card-heading");
-  heading.innerHTML = FINGERPRINT_ICON;
-  heading.append(element("span", null, "Approved on a real device"));
-  card.append(heading, element("div", "tp-card-line", "A person pressed their thumb on a Seeker to approve this exact post."));
-  const facts = element("div", "tp-card-facts");
-  const addFact = (label, value) => {
-    const row = element("div", "tp-card-fact");
-    row.append(element("span", "tp-card-fact-label", label), element("span", "tp-card-fact-value", value));
-    facts.append(row);
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-label", "Thumbprint proof");
+  const header = element("div", "tp-card-header");
+  header.append(iconElement("mark", "tp-card-glyph"), element("span", null, "Signed with fingerprint"));
+  card.append(header, element("p", "tp-card-lede", "The account owner approved this exact post on their Seeker."));
+
+  const rows = element("dl", "tp-card-rows");
+  const addRow = (label, value, className) => {
+    const row = element("div", "tp-card-row");
+    row.append(element("dt", null, label), element("dd", className, value));
+    rows.append(row);
   };
-  addFact("Approved", timeAgo(result.timestamp));
-  addFact("Device", `${result.sgtMint.slice(0, 4)}…${result.sgtMint.slice(-4)}`);
-  addFact("This device, last 24h", `${result.recentCount} ${result.recentCount === 1 ? "post" : "posts"}`);
-  card.append(facts);
+  addRow(
+    "Approved",
+    new Date(result.timestamp * 1000).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  );
+  addRow("Device", `${result.sgtMint.slice(0, 4)}…${result.sgtMint.slice(-4)}`, "tp-mono");
+  rows.lastElementChild.lastElementChild.prepend(element("span", "tp-device-kind", "Seeker · "));
+  const busy = result.recentCount > 50;
+  addRow(
+    "Last 24h",
+    `${result.recentCount} ${result.recentCount === 1 ? "post" : "posts"} approved${busy ? ", unusually high" : ""}`,
+    busy ? "tp-warn-text" : null
+  );
+  card.append(rows);
   if (result.proofUrl) {
-    const link = element("a", "tp-card-link", "View proof on Solana");
+    const link = element("a", "tp-card-link", "View proof ↗");
     link.href = result.proofUrl;
     link.target = "_blank";
     link.rel = "noopener";
@@ -86,70 +112,113 @@ function showCard(badge, result) {
   card.addEventListener("mouseenter", () => clearTimeout(hideTimer));
   card.addEventListener("mouseleave", scheduleHide);
   document.body.append(card);
-  const anchor = badge.getBoundingClientRect();
-  const size = card.getBoundingClientRect();
-  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - size.width - 8));
-  const below = anchor.bottom + 8;
-  const top = below + size.height > window.innerHeight - 8 ? Math.max(8, anchor.top - size.height - 8) : below;
+
+  const anchorBox = anchor.getBoundingClientRect();
+  const cardBox = card.getBoundingClientRect();
+  const left = Math.max(8, Math.min(anchorBox.left - 16, window.innerWidth - cardBox.width - 8));
+  const below = anchorBox.bottom + 8;
+  const top = below + cardBox.height > window.innerHeight - 8 ? Math.max(8, anchorBox.top - cardBox.height - 8) : below;
   card.style.left = `${left}px`;
   card.style.top = `${top}px`;
   openCard = card;
 }
-
-function scheduleHide() {
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(hideCard, 200);
-}
 window.addEventListener("scroll", hideCard, { passive: true });
+document.addEventListener("keydown", (event) => event.key === "Escape" && hideCard());
 
-function markCertified(article, post, result) {
-  article.classList.add("tp-certified");
-  const badge = element("span", "tp-badge");
-  badge.tabIndex = 0;
-  badge.setAttribute("role", "button");
-  badge.setAttribute("aria-label", "Thumbprint: approved on a real device. Show details.");
-  badge.innerHTML = FINGERPRINT_ICON;
-  badge.append(element("span", "tp-badge-label", "Thumbprint"));
-  badge.addEventListener("mouseenter", () => showCard(badge, result));
-  badge.addEventListener("focus", () => showCard(badge, result));
-  badge.addEventListener("mouseleave", scheduleHide);
-  badge.addEventListener("blur", scheduleHide);
-  badge.addEventListener("click", (event) => event.stopPropagation());
-  post.nameElement.append(badge);
+// ---- Marks on posts ----
+
+function clearMarks(article) {
+  article.classList.remove("tp-dim");
+  article.querySelectorAll(".tp-mark, .tp-notice").forEach((node) => node.remove());
 }
 
-function markUnsigned(article, post) {
-  article.classList.add("tp-unsigned");
-  const warning = element("div", "tp-warning");
-  warning.setAttribute("role", "alert");
-  const title = element("div", "tp-warning-title");
-  title.innerHTML = FINGERPRINT_ICON;
-  title.append(element("span", null, "Not signed. Be careful."));
-  warning.append(
-    title,
-    element(
-      "div",
-      "tp-warning-body",
-      `@${post.handle.slice(2)} approves every post with Thumbprint. This one was not approved on their device, so the account may be compromised. Do not click links or connect a wallet.`
-    )
+function markCertified(post, result) {
+  const mark = iconElement("mark", "tp-mark");
+  mark.tabIndex = 0;
+  mark.setAttribute("role", "button");
+  mark.setAttribute("aria-label", "Signed with fingerprint, view proof");
+  mark.addEventListener("mouseenter", () => {
+    clearTimeout(hideTimer);
+    showTimer = setTimeout(() => showCard(mark, result), 350);
+  });
+  mark.addEventListener("mouseleave", scheduleHide);
+  mark.addEventListener("focus", () => showCard(mark, result));
+  mark.addEventListener("blur", scheduleHide);
+  mark.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showCard(mark, result);
+  });
+  // Inside the name link's own row, right after X's badge. The click handler above keeps
+  // a click on the mark from following the profile link.
+  (post.profileLink.firstElementChild || post.profileLink).append(mark);
+}
+
+// An unsigned post is a caution; an unsigned post carrying a link is how drainers work.
+function markUnsigned(post) {
+  const links = Array.from(post.textElement.querySelectorAll('a[href^="http"]'));
+  const name = "@" + post.handle.slice(2);
+  const notice = element("div", links.length ? "tp-notice tp-notice-danger" : "tp-notice");
+  notice.setAttribute("role", "note");
+  const line = element("div", "tp-notice-line");
+  line.append(
+    iconElement("alert", "tp-notice-icon"),
+    element("strong", null, "Not signed"),
+    element("span", "tp-notice-reason", `${name} signs posts with Thumbprint. This one was not approved on their device.`)
   );
-  post.textElement.before(warning);
+  notice.append(line);
+  if (links.length) {
+    const gate = element("div", "tp-notice-gate");
+    gate.append(element("span", null, "Links in this post are blocked. The account may be compromised."));
+    const open = element("button", "tp-notice-open", "Unblock links");
+    open.type = "button";
+    open.addEventListener("click", (event) => {
+      event.stopPropagation();
+      notice.dataset.unblocked = "true";
+      links.forEach((link) => link.classList.remove("tp-blocked-link"));
+      gate.remove();
+    });
+    gate.append(open);
+    notice.append(gate);
+    for (const link of links) {
+      link.classList.add("tp-blocked-link");
+      link.addEventListener(
+        "click",
+        (event) => {
+          if (notice.dataset.unblocked) return;
+          event.preventDefault();
+          event.stopPropagation();
+          gate.classList.remove("tp-flash");
+          void gate.offsetWidth; // restart the animation
+          gate.classList.add("tp-flash");
+        },
+        true
+      );
+    }
+  }
+  notice.addEventListener("click", (event) => event.stopPropagation());
+  post.textElement.before(notice);
 }
 
 let dimUnsigned = false;
 chrome.storage?.sync.get({ dimUnsigned: false }).then((settings) => {
   dimUnsigned = settings.dimUnsigned;
-  scan();
+  rescanAll();
 });
 chrome.storage?.onChanged.addListener((changes) => {
   if (changes.dimUnsigned) {
     dimUnsigned = changes.dimUnsigned.newValue;
-    document.querySelectorAll("article[data-tp-key]").forEach((article) => delete article.dataset.tpKey);
-    scan();
+    rescanAll();
   }
 });
 
+function rescanAll() {
+  document.querySelectorAll("article[data-tp-key]").forEach((article) => delete article.dataset.tpKey);
+  scan();
+}
+
 async function scan() {
+  applyTheme();
   const pending = [];
   for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
     const post = readPost(article);
@@ -175,8 +244,8 @@ async function scan() {
     clearMarks(article);
     const result = results?.[index];
     if (!result) return delete article.dataset.tpKey; // lookup failed, retry on next scan
-    if (result.state === "certified") markCertified(article, post, result);
-    else if (result.state === "unsigned") markUnsigned(article, post);
+    if (result.state === "certified") markCertified(post, result);
+    else if (result.state === "unsigned") markUnsigned(post);
     else if (dimUnsigned) article.classList.add("tp-dim");
   });
 }
@@ -188,40 +257,48 @@ function myHandle() {
   return profileLink ? "x:" + profileLink.getAttribute("href").slice(1).toLowerCase() : null;
 }
 
-function composerText(toolbar) {
-  for (let node = toolbar.parentElement; node; node = node.parentElement) {
+function composerText(start) {
+  for (let node = start; node; node = node.parentElement) {
     const editor = node.querySelector('[data-testid^="tweetTextarea_"]');
     if (editor) return normalizeText(visibleText(editor));
   }
   return "";
 }
 
-function setButtonState(button, state, label) {
+const BUTTON_STATES = {
+  idle: { icon: "mark", label: "", title: "Sign with Thumbprint: approve this post on your Seeker, then post it" },
+  waiting: { icon: "spinner", label: "Check your phone", title: "Waiting for approval on your Seeker" },
+  done: { icon: "check", label: "Signed", title: "Approved. Posting." },
+  error: { icon: "alert", label: "Not signed", title: "" },
+};
+
+function setButtonState(button, state, detail) {
+  const config = BUTTON_STATES[state];
   button.dataset.state = state;
-  button.querySelector(".tp-button-label").textContent = label;
+  button.querySelector(".tp-sign-icon").innerHTML = ICONS[config.icon];
+  button.querySelector(".tp-sign-label").textContent = config.label;
+  button.title = detail || config.title;
+  button.setAttribute("aria-label", detail || config.title);
   button.disabled = state === "waiting";
 }
 
 function addComposerButtons() {
   for (const postButton of document.querySelectorAll('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]')) {
-    // X wraps Post in a column that fades when the composer is empty; the row around
-    // that wrapper is where a sibling button sits level with Post.
+    // X wraps Post in a column that fades when the draft is empty; the row around that
+    // wrapper is where a sibling control sits level with Post. Post itself is never restyled.
     const wrapper = postButton.parentElement;
-    const container = wrapper?.parentElement;
-    if (!container || container.querySelector(".tp-button")) continue;
-    const inline = postButton.dataset.testid === "tweetButtonInline"; // tight on space
-    const idleLabel = inline ? "Thumbprint" : "Post with Thumbprint";
-    const button = element("button", "tp-button");
+    const row = wrapper?.parentElement;
+    if (!row || row.querySelector(".tp-sign")) continue;
+    const button = element("button", "tp-sign");
     button.type = "button";
-    button.innerHTML = FINGERPRINT_ICON;
-    button.append(element("span", "tp-button-label"));
-    button.title = "Post with Thumbprint: approve this post on your Seeker";
-    setButtonState(button, "idle", idleLabel);
+    button.setAttribute("aria-live", "polite");
+    button.append(element("span", "tp-sign-icon"), element("span", "tp-sign-label"));
+    setButtonState(button, "idle");
     button.addEventListener("click", async () => {
       const handle = myHandle();
-      const text = composerText(container);
-      if (!handle || !text) return setButtonState(button, "error", "Write something first");
-      setButtonState(button, "waiting", "Check your Seeker");
+      const text = composerText(row);
+      if (!handle || !text) return;
+      setButtonState(button, "waiting");
       let response;
       try {
         response = await chrome.runtime.sendMessage({ type: "approve", handle, text });
@@ -229,12 +306,12 @@ function addComposerButtons() {
         response = null;
       }
       if (response?.ok) {
-        setButtonState(button, "done", "Certified");
+        setButtonState(button, "done");
         postButton.click();
       } else {
         setButtonState(button, "error", response?.reason || "Not approved");
       }
-      setTimeout(() => setButtonState(button, "idle", idleLabel), 4000);
+      setTimeout(() => setButtonState(button, "idle"), 3500);
     });
     wrapper.before(button);
   }

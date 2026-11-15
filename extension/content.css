@@ -1,97 +1,148 @@
-/* Thumbprint on x.com. One accent (mint to violet) for approved, X's own red for warnings. */
+/* Thumbprint on x.com.
+   Neutrals follow X's three themes; the only brand colors are one accent (signed)
+   and one caution color, plus a red for the dangerous case. No gradients. */
 :root {
-  --tp-mint: #14f195;
-  --tp-violet: #9945ff;
-  --tp-red: #f4212e;
-  --tp-ink: #0b0f0e;
-  --tp-gradient: linear-gradient(120deg, var(--tp-mint), var(--tp-violet));
+  --tp-accent: #00875a;
+  --tp-warn: #b45309;
+  --tp-danger: #d91f2a;
+  --tp-surface: #ffffff;
+  --tp-text: #0f1419;
+  --tp-muted: #536471;
+  --tp-border: #eff3f4;
+  --tp-shadow: 0 0 15px rgba(101, 119, 134, 0.2), 0 0 3px 1px rgba(101, 119, 134, 0.15);
+  --tp-font: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+:root[data-tp-theme="dim"] {
+  --tp-accent: #14f195;
+  --tp-warn: #ffad1f;
+  --tp-danger: #ff5a64;
+  --tp-surface: #15202b;
+  --tp-text: #f7f9f9;
+  --tp-muted: #8b98a5;
+  --tp-border: #38444d;
+  --tp-shadow: 0 0 15px rgba(255, 255, 255, 0.2), 0 0 3px 1px rgba(255, 255, 255, 0.15);
+}
+:root[data-tp-theme="dark"] {
+  --tp-accent: #14f195;
+  --tp-warn: #ffad1f;
+  --tp-danger: #ff5a64;
+  --tp-surface: #000000;
+  --tp-text: #e7e9ea;
+  --tp-muted: #71767b;
+  --tp-border: #2f3336;
+  --tp-shadow: 0 0 15px rgba(255, 255, 255, 0.2), 0 0 3px 1px rgba(255, 255, 255, 0.15);
 }
 
 .tp-icon {
-  width: 1em;
-  height: 1em;
-  flex: none;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* ---- Certified post ---- */
-article.tp-certified {
-  box-shadow: inset 3px 0 0 0 var(--tp-mint);
-  background-image: linear-gradient(90deg, rgba(20, 241, 149, 0.07), transparent 38%);
-}
-
-.tp-badge {
+/* ---- Mark: same footprint as X's verified check, right after it ---- */
+.tp-mark {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-  padding: 1px 8px 1px 6px;
-  border-radius: 9999px;
-  font: 700 12px/18px -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--tp-ink);
-  background: var(--tp-gradient);
-  cursor: default;
-  vertical-align: middle;
+  flex: none;
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 3px;
+  color: var(--tp-accent);
+  cursor: pointer;
   outline: none;
 }
-.tp-badge .tp-icon {
-  font-size: 13px;
+.tp-mark::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--tp-accent);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
 }
-.tp-badge:focus-visible {
-  box-shadow: 0 0 0 2px var(--tp-mint);
+.tp-mark:hover::before {
+  opacity: 0.12;
+}
+.tp-mark:focus-visible {
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px var(--tp-surface), 0 0 0 4px var(--tp-accent);
+}
+.tp-mark .tp-icon {
+  position: relative;
 }
 
+/* ---- Detail card ---- */
 .tp-card {
   position: fixed;
   z-index: 2147483647;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 280px;
-  padding: 14px 16px;
+  box-sizing: border-box;
+  width: 300px;
+  padding: 16px;
   border-radius: 16px;
-  border: 1px solid rgba(20, 241, 149, 0.35);
-  background: var(--tp-ink);
-  color: #e7e9ea;
-  font: 400 13px/18px -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  background: var(--tp-surface);
+  color: var(--tp-text);
+  box-shadow: var(--tp-shadow);
+  font: 400 13px/18px var(--tp-font);
+  animation: tp-rise 150ms cubic-bezier(0.2, 0, 0, 1);
 }
-.tp-card-heading {
+@keyframes tp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.tp-card-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 800;
   font-size: 15px;
-  color: var(--tp-mint);
+  line-height: 20px;
+  font-weight: 700;
 }
-.tp-card-heading .tp-icon {
-  font-size: 18px;
+.tp-card-glyph {
+  width: 20px;
+  height: 20px;
+  color: var(--tp-accent);
 }
-.tp-card-line {
-  color: #aab3b0;
+.tp-card-lede {
+  margin: 4px 0 12px;
+  color: var(--tp-muted);
 }
-.tp-card-facts {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.tp-card-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--tp-border);
+  border-bottom: 1px solid var(--tp-border);
 }
-.tp-card-fact {
+.tp-card-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
-.tp-card-fact-label {
-  color: #aab3b0;
+.tp-card-row dt {
+  color: var(--tp-muted);
 }
-.tp-card-fact-value {
-  font-weight: 700;
+.tp-card-row dd {
+  margin: 0;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.tp-mono {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.tp-device-kind {
+  font: 400 13px/18px var(--tp-font);
+}
+.tp-warn-text {
+  color: var(--tp-warn);
+}
 .tp-card-link {
-  color: var(--tp-mint);
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--tp-accent);
   font-weight: 700;
   text-decoration: none;
 }
@@ -99,102 +150,173 @@ article.tp-certified {
   text-decoration: underline;
 }
 
-/* ---- Unsigned post from an account that signs ---- */
-article.tp-unsigned {
-  box-shadow: inset 3px 0 0 0 var(--tp-red);
-  background-image: linear-gradient(90deg, rgba(244, 33, 46, 0.1), transparent 45%);
+/* ---- Notice on an unsigned post from an account that signs ---- */
+.tp-notice {
+  --tp-notice-color: var(--tp-warn);
+  box-sizing: border-box;
+  margin: 2px 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--tp-border);
+  border-left: 3px solid var(--tp-notice-color);
+  border-radius: 4px 12px 12px 4px;
+  color: var(--tp-text);
+  font: 400 13px/18px var(--tp-font);
+  cursor: default;
 }
-.tp-warning {
-  margin: 4px 0 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(244, 33, 46, 0.55);
-  background: rgba(244, 33, 46, 0.12);
-  font: 400 14px/19px -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: inherit;
+.tp-notice-danger {
+  --tp-notice-color: var(--tp-danger);
 }
-.tp-warning-title {
+.tp-notice-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.tp-notice-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--tp-notice-color);
+}
+.tp-notice strong {
+  flex: none;
+  font-weight: 700;
+  color: var(--tp-notice-color);
+}
+.tp-notice-reason {
+  color: var(--tp-muted);
+}
+.tp-notice-gate {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
-  font-weight: 800;
-  font-size: 15px;
-  color: var(--tp-red);
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-border);
 }
-.tp-warning-title .tp-icon {
-  font-size: 18px;
+.tp-notice-open {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tp-muted);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
-article.tp-unsigned [data-testid="tweetText"] a {
-  text-decoration: line-through;
-  text-decoration-color: var(--tp-red);
+.tp-notice-open:hover {
+  color: var(--tp-text);
+}
+.tp-notice-open:focus-visible {
+  outline: 2px solid var(--tp-notice-color);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.tp-flash {
+  animation: tp-flash 600ms ease-out;
+}
+@keyframes tp-flash {
+  from {
+    color: var(--tp-danger);
+  }
+}
+a.tp-blocked-link {
+  color: var(--tp-muted) !important;
+  text-decoration: line-through !important;
+  cursor: not-allowed;
 }
 
 /* ---- Optional dimming of posts with no approval ---- */
 article.tp-dim {
-  opacity: 0.38;
-  transition: opacity 0.15s;
+  opacity: 0.6;
+  transition: opacity 150ms ease-out;
 }
-article.tp-dim:hover {
+article.tp-dim:hover,
+article.tp-dim:focus-within {
   opacity: 1;
 }
 
-/* ---- Composer button ---- */
-.tp-button {
+/* ---- Composer: a quiet circular control left of Post; it widens only to show a state ---- */
+.tp-sign {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  margin: 0 12px 0 8px;
-  padding: 0 14px 0 10px;
-  border: 0;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-width: 36px;
+  height: 36px;
+  margin-right: 12px;
+  padding: 0 7px;
+  border: 1px solid var(--tp-border);
   border-radius: 9999px;
-  font: 700 15px/20px -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: var(--tp-ink);
-  background: var(--tp-gradient);
-  background-size: 200% 100%;
-  cursor: pointer;
+  background: transparent;
+  color: var(--tp-accent);
+  font: 700 14px/20px var(--tp-font);
   white-space: nowrap;
-  transition: filter 0.15s, transform 0.1s;
+  cursor: pointer;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
-.tp-button .tp-icon {
-  font-size: 18px;
+.tp-sign:hover {
+  border-color: var(--tp-accent);
+  background: color-mix(in srgb, var(--tp-accent) 10%, transparent);
 }
-/* Match X: fade while the composer is empty and Post is disabled. */
-.tp-button:has(+ div > [aria-disabled="true"]) {
-  opacity: 0.5;
-}
-.tp-button:hover {
-  filter: brightness(1.08);
-}
-.tp-button:active {
-  transform: scale(0.97);
-}
-.tp-button:focus-visible {
-  outline: 2px solid var(--tp-mint);
+.tp-sign:focus-visible {
+  outline: 2px solid var(--tp-accent);
   outline-offset: 2px;
 }
-.tp-button[data-state="waiting"] {
+.tp-sign-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.tp-sign-label:empty {
+  display: none;
+}
+.tp-sign:not([data-state="idle"]) {
+  padding: 0 14px 0 10px;
+}
+.tp-sign[data-state="waiting"] {
   cursor: progress;
-  animation: tp-sweep 1.4s linear infinite;
+  border-color: var(--tp-accent);
 }
-.tp-button[data-state="waiting"] .tp-icon {
-  animation: tp-pulse 1.4s ease-in-out infinite;
+.tp-sign[data-state="waiting"] .tp-sign-icon {
+  width: 16px;
+  height: 16px;
+  animation: tp-spin 800ms linear infinite;
 }
-.tp-button[data-state="error"] {
-  background: var(--tp-red);
-  color: #fff;
+.tp-sign[data-state="done"] .tp-sign-icon {
+  animation: tp-pop 200ms cubic-bezier(0.2, 0, 0, 1);
 }
-@keyframes tp-sweep {
-  from { background-position: 0% 0; }
-  to { background-position: 200% 0; }
+.tp-sign[data-state="error"] {
+  color: var(--tp-warn);
+  border-color: var(--tp-warn);
 }
-@keyframes tp-pulse {
-  50% { transform: scale(1.25); }
+/* Match X: fade while the draft is empty and Post is disabled. */
+.tp-sign[data-state="idle"]:has(+ div > [aria-disabled="true"]) {
+  opacity: 0.5;
+  cursor: default;
 }
+@keyframes tp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes tp-pop {
+  from {
+    transform: scale(0.8);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tp-button[data-state="waiting"],
-  .tp-button[data-state="waiting"] .tp-icon {
+  .tp-card,
+  .tp-flash,
+  .tp-sign[data-state="done"] .tp-sign-icon {
     animation: none;
+  }
+  .tp-sign[data-state="waiting"] .tp-sign-icon {
+    animation-duration: 2s;
   }
 }

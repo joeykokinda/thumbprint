@@ -177,6 +177,15 @@ Bun.serve({
     if (request.method === "POST" && url.pathname === "/v1/approve") return json(await approve((await request.json()) as any));
     if (url.pathname === "/v1/paired") return json({ paired: phones.has(url.searchParams.get("session") || "") });
     if (url.pathname.startsWith("/p/")) return proofPage(url.pathname.slice(3));
+    // Dev preview bridge: a popup on this origin hands the extension source to the opener,
+    // so the real content script can be run on x.com without reloading the extension.
+    if (DEV && url.pathname === "/dev/bridge") {
+      const read = (name: string) => Bun.file(new URL(`../extension/${name}`, import.meta.url)).text();
+      const bundle = { css: await read("content.css"), js: (await read("shared.js")) + "\n" + (await read("content.js")) };
+      return new Response(`<script>opener.postMessage(${JSON.stringify(bundle).replace(/</g, "\\u003c")}, "*"); close();</script>`, {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
     if (DEV && request.method === "POST" && url.pathname === "/dev/bind") {
       const body = (await request.json()) as any;
       saveBinding(body.handle, "dev", body.sgtMint || "DevDevice1111111111111111111111111111111111", body.boundAt ?? Math.floor(Date.now() / 1000));
