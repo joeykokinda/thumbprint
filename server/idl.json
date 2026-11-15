@@ -1,0 +1,309 @@
+{
+  "address": "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s",
+  "metadata": {
+    "name": "thumbprint",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Per-post hardware approval from a Solana Seeker"
+  },
+  "instructions": [
+    {
+      "name": "attest",
+      "docs": [
+        "Records that the device bound to a handle approved one exact post.",
+        "`text_hash` is sha256 of the normalized post text, computed by the client."
+      ],
+      "discriminator": [
+        83,
+        148,
+        120,
+        119,
+        144,
+        139,
+        117,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "text_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "bind",
+      "docs": [
+        "One device, one handle. `handle` is \"platform:name\", lowercase, e.g. \"x:someone\"."
+      ],
+      "discriminator": [
+        178,
+        57,
+        187,
+        254,
+        138,
+        43,
+        99,
+        134
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "handle_claim",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "handle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "handle",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Device",
+      "discriminator": [
+        153,
+        248,
+        23,
+        39,
+        83,
+        45,
+        68,
+        128
+      ]
+    },
+    {
+      "name": "HandleClaim",
+      "discriminator": [
+        148,
+        215,
+        248,
+        53,
+        11,
+        234,
+        115,
+        190
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Attested",
+      "discriminator": [
+        184,
+        102,
+        113,
+        199,
+        220,
+        197,
+        96,
+        50
+      ]
+    },
+    {
+      "name": "Bound",
+      "discriminator": [
+        246,
+        254,
+        75,
+        186,
+        240,
+        107,
+        207,
+        246
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotSeeker",
+      "msg": "Signer does not hold a Seeker Genesis Token"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidHandle",
+      "msg": "Handle must be platform:name using a-z, 0-9, underscore or dot, at most 32 bytes"
+    }
+  ],
+  "types": [
+    {
+      "name": "Attested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "text_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "sgt_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Bound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "sgt_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Device",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HandleClaim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sgt_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}
