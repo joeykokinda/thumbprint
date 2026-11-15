@@ -2,6 +2,9 @@
 resolution = true
 skip-lint = false
 
+[programs.devnet]
+thumbprint = "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s"
+
 [programs.localnet]
 thumbprint = "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s"
 

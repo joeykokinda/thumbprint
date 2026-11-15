@@ -33,6 +33,7 @@ pub mod thumbprint {
         ctx.accounts.handle_claim.sgt_mint = ctx.accounts.sgt_mint.key();
         emit!(Bound {
             handle,
+            owner: ctx.accounts.owner.key(),
             sgt_mint: ctx.accounts.sgt_mint.key(),
         });
         Ok(())
@@ -49,6 +50,7 @@ pub mod thumbprint {
         emit!(Attested {
             handle: ctx.accounts.device.handle.clone(),
             text_hash,
+            owner: ctx.accounts.owner.key(),
             sgt_mint: ctx.accounts.sgt_mint.key(),
             timestamp: Clock::get()?.unix_timestamp,
         });
@@ -73,6 +75,12 @@ pub fn is_valid_handle(handle: &str) -> bool {
 /// Seeker Genesis Token group. Membership can only be written by the group's
 /// update authority, so a self-made mint cannot pass.
 fn verify_sgt(owner: &Pubkey, token_account: &AccountInfo, mint: &AccountInfo) -> Result<()> {
+    // ponytail: the token only exists on mainnet, so the devnet build skips this and the
+    // indexer runs the same check over mainnet RPC using `owner` and `sgt_mint` from the event.
+    // Upgrade path: deploy to mainnet without the feature.
+    if cfg!(feature = "devnet") {
+        return Ok(());
+    }
     require_keys_eq!(*token_account.owner, spl_token_2022::ID, ThumbprintError::NotSeeker);
     require_keys_eq!(*mint.owner, spl_token_2022::ID, ThumbprintError::NotSeeker);
 
@@ -157,6 +165,7 @@ pub struct HandleClaim {
 #[event]
 pub struct Bound {
     pub handle: String,
+    pub owner: Pubkey,
     pub sgt_mint: Pubkey,
 }
 
@@ -164,6 +173,7 @@ pub struct Bound {
 pub struct Attested {
     pub handle: String,
     pub text_hash: [u8; 32],
+    pub owner: Pubkey,
     pub sgt_mint: Pubkey,
     pub timestamp: i64,
 }
