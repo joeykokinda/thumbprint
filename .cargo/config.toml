@@ -1,0 +1,13 @@
+# The SBF toolchain (platform-tools v1.48) ships rustc 1.84.1, while the system
+# toolchain is far newer. Left alone, cargo resolves dependencies to their
+# latest versions, many of which now require edition 2024, and cargo-build-sbf
+# cannot even parse their manifests.
+#
+# "fallback" makes resolution MSRV-aware: cargo prefers versions compatible with
+# the rust-version declared in programs/thumbprint/Cargo.toml (1.84.1) and only
+# reaches for newer ones when there is no other option.
+#
+# This belongs here rather than as resolver = "3" in Cargo.toml because the
+# Anchor CLI rejects resolver 3 when reading the workspace manifest.
+[resolver]
+incompatible-rust-versions = "fallback"

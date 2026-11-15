@@ -1,0 +1,26 @@
+[package]
+name = "thumbprint"
+version = "0.1.0"
+description = "Per-post hardware approval from a Solana Seeker"
+edition = "2021"
+# Must match the rustc inside platform-tools, not the system toolchain.
+rust-version = "1.84.1"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "thumbprint"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = { version = "0.31.1", default-features = false, features = ["token", "token_2022", "token_2022_extensions"] }
+spl-token-group-interface = "0.5.0"
+

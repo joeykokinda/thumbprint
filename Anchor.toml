@@ -1,0 +1,31 @@
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+thumbprint = "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "node --test tests/thumbprint.ts"
+
+# Tests run against a real Seeker Genesis Token mint cloned from mainnet, plus a
+# fabricated token account that gives the test owner key one unit of it.
+[test]
+startup_wait = 30000
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+[[test.validator.clone]]
+address = "5mXbkqKz883aufhAsx3p5Z1NcvD2ppZbdTTznM6oUKLj"
+
+[[test.validator.account]]
+address = "9QrU5zFEb1PFikn3dCKFNs4FTMh4Cah6FDZ37BaaSta9"
+filename = "tests/fixtures/sgt_token_account.json"
