@@ -1,7 +1,8 @@
 // All network access for the extension. The content script only talks to this worker.
 importScripts("shared.js");
 
-const DEFAULT_SERVER = "http://localhost:8787";
+// For local development: chrome.storage.local.set({ server: "http://localhost:8787" }) from the worker console.
+const DEFAULT_SERVER = "https://thumbprint.pyras.org";
 
 // One shared promise, so two first messages cannot each invent a session id.
 let cached;

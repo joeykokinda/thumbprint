@@ -333,7 +333,9 @@ async function approve(body: { session: string; handle: string; text: string; ha
 
 // ---- HTTP ----
 
-const json = (value: unknown, status = 200) => Response.json(value, { status });
+// The API is public and carries no cookies, so any origin may call it.
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
+const json = (value: unknown, status = 200) => Response.json(value, { status, headers: CORS });
 const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 function proofPage(signature: string) {
@@ -370,6 +372,7 @@ Bun.serve({
   idleTimeout: 255,
   async fetch(request, server) {
     const url = new URL(request.url);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     if (url.pathname === "/v1/ws") {
       const session = url.searchParams.get("session");
       return session && server.upgrade(request, { data: { session } }) ? undefined : json({ error: "bad session" }, 400);
@@ -415,7 +418,8 @@ const session = params.get("session");
 // ?from=x:real&as=x:test answers for one handle with another's records, so the flow can be
 // exercised on a logged-in account without linking that account to a test key.
 const swap = (handle) => (handle === params.get("from") ? params.get("as") : handle);
-const post = (path, body) => fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((response) => response.json());
+const server = params.get("server") || ""; // ?server=https://... previews against another deployment
+const post = (path, body) => fetch(server + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((response) => response.json());
 opener.postMessage({ tpBundle: ${JSON.stringify(bundle).replace(/</g, "\\u003c")} }, "*");
 addEventListener("message", async (event) => {
   const { tpCall, message } = event.data || {};

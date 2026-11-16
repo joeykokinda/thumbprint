@@ -6,7 +6,9 @@ Crypto accounts on X approve each post with a fingerprint on a Solana Seeker. A 
 extension shows readers which posts were approved, and warns when an account that signs its
 posts publishes one that was not: the hijacked account posting a drainer link.
 
-Built for the UBC 2026 hackathon. Runs on Solana devnet.
+**Live: [thumbprint.pyras.org](https://thumbprint.pyras.org)**. Built for the UBC 2026 hackathon. Runs on Solana devnet.
+
+The extension talks to the live server out of the box, so loading it is enough to see marks on X.
 
 ## What it does
 
