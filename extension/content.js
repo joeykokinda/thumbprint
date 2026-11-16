@@ -13,11 +13,11 @@ const ICONS = {
   spinner: svg('<path d="M12 3a9 9 0 1 0 9 9"/>'),
 };
 
-// Text as the author typed it: emoji come from <img alt>, shortened links are skipped.
+// Text as the author typed it: emoji come from <img alt>, links keep their visible address.
 function visibleText(node) {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (node.nodeName === "IMG") return node.alt || "";
-  if (node.nodeName === "A" && /^https?:\/\/t\.co\//.test(node.href)) return " ";
+  if (node.nodeName === "A" && /^https?:\/\/t\.co\//.test(node.href)) return ` https://${node.textContent.replace(/^https?:\/\//, "")} `;
   return Array.from(node.childNodes, visibleText).join("");
 }
 
