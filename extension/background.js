@@ -31,7 +31,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ? settings().then(async ({ session }) =>
             post("/v1/approve", { session, handle: message.handle, text: message.text, hash: await sha256Hex(message.text) })
           )
-        : Promise.resolve(null);
+        : message.type === "session"
+          ? settings()
+          : Promise.resolve(null);
   work.then(sendResponse, () => sendResponse(message.type === "approve" ? { ok: false, reason: "Server unreachable" } : null));
   return true; // keep the channel open for the async reply
 });

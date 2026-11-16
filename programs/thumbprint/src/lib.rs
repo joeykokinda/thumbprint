@@ -56,6 +56,23 @@ pub mod thumbprint {
         });
         Ok(())
     }
+
+    /// Kill switch: the device owner marks the handle as compromised (or clears it).
+    /// Works while an attacker holds the social account, because it needs only the device.
+    pub fn set_compromised(ctx: Context<Attest>, compromised: bool) -> Result<()> {
+        verify_sgt(
+            ctx.accounts.owner.key,
+            &ctx.accounts.sgt_token_account,
+            &ctx.accounts.sgt_mint,
+        )?;
+        emit!(Flagged {
+            handle: ctx.accounts.device.handle.clone(),
+            compromised,
+            owner: ctx.accounts.owner.key(),
+            sgt_mint: ctx.accounts.sgt_mint.key(),
+        });
+        Ok(())
+    }
 }
 
 pub fn is_valid_handle(handle: &str) -> bool {
@@ -176,6 +193,14 @@ pub struct Attested {
     pub owner: Pubkey,
     pub sgt_mint: Pubkey,
     pub timestamp: i64,
+}
+
+#[event]
+pub struct Flagged {
+    pub handle: String,
+    pub compromised: bool,
+    pub owner: Pubkey,
+    pub sgt_mint: Pubkey,
 }
 
 #[error_code]

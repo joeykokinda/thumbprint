@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Thumbprint</title>
+<link rel="icon" href="/icon.svg">
+<style>
+  :root { --accent: #14f195; --danger: #ff5a64; --text: #e7e9ea; --muted: #71767b; --border: #2f3336; --surface: #16181c; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #000; color: var(--text); font: 400 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  main { display: flex; flex-direction: column; gap: 12px; min-height: 100%; max-width: 480px; margin: 0 auto; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); }
+  section { margin-bottom: auto; }
+  .hero { padding-top: 12vh; text-align: center; }
+  .glyph { width: 64px; height: 64px; margin: 0 auto 20px; color: var(--accent); }
+  .glyph svg { display: block; width: 100%; height: 100%; }
+  .danger .glyph, .hero.danger h1 { color: var(--danger); }
+  .pulse { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  h1 { margin: 0 0 8px; font-size: 24px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+  p { margin: 0; color: var(--muted); }
+  .eyebrow { margin-bottom: 12px; font-size: 14px; font-weight: 700; color: var(--accent); }
+  blockquote { margin: 0 0 12px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); font-size: 18px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .hint { font-size: 13px; }
+  button { width: 100%; min-height: 52px; border: 0; border-radius: 9999px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button:active { opacity: 0.8; }
+  .primary { background: var(--accent); color: #000; }
+  .primary.danger { background: var(--danger); color: #fff; }
+  .quiet { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .quiet.danger { color: var(--danger); }
+  form { display: grid; gap: 12px; }
+  label { font-size: 13px; color: var(--muted); }
+  .field { display: flex; align-items: center; gap: 4px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .field:focus-within { border-color: var(--accent); }
+  .field span { color: var(--muted); }
+  input { flex: 1; min-width: 0; height: 52px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
+  dl { margin: 0; border-top: 1px solid var(--border); }
+  dl div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .error { padding: 12px 16px; border: 1px solid var(--danger); border-radius: 12px; color: var(--danger); font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+</style>
+<main></main>
+<script src="/phone.js"></script>
+</html>

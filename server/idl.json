@@ -157,6 +157,63 @@
           "type": "string"
         }
       ]
+    },
+    {
+      "name": "set_compromised",
+      "docs": [
+        "Kill switch: the device owner marks the handle as compromised (or clears it).",
+        "Works while an attacker holds the social account, because it needs only the device."
+      ],
+      "discriminator": [
+        113,
+        220,
+        82,
+        230,
+        146,
+        83,
+        141,
+        243
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "compromised",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -212,6 +269,19 @@
         107,
         207,
         246
+      ]
+    },
+    {
+      "name": "Flagged",
+      "discriminator": [
+        172,
+        99,
+        137,
+        6,
+        66,
+        30,
+        69,
+        5
       ]
     }
   ],
@@ -289,6 +359,30 @@
           {
             "name": "handle",
             "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Flagged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "compromised",
+            "type": "bool"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "sgt_mint",
+            "type": "pubkey"
           }
         ]
       }

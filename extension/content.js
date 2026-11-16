@@ -157,21 +157,24 @@ function markCertified(post, result) {
 }
 
 // An unsigned post is a caution; an unsigned post carrying a link is how drainers work.
-function markUnsigned(post) {
+// A plain unsigned post gets only the struck mark. The notice appears when there is something
+// to act on: a link to block, or the owner has reported the account compromised.
+function markUnsigned(post, compromised) {
   const links = Array.from(post.textElement.querySelectorAll('a[href^="http"]'));
   const name = "@" + post.handle.slice(2);
-  const notice = element("div", links.length ? "tp-notice tp-notice-danger" : "tp-notice");
+  const danger = compromised || links.length > 0;
+  const label = compromised ? "Account compromised" : "Not signed";
+  const reason = compromised
+    ? `The owner of ${name} reported this account as taken over. This post was not approved on their device.`
+    : `${name} signs posts with Thumbprint. This one was not approved on their device.`;
+  const notice = element("div", "tp-notice tp-notice-danger");
   notice.setAttribute("role", "note");
   const line = element("div", "tp-notice-line");
-  line.append(
-    iconElement("alert", "tp-notice-icon"),
-    element("strong", null, "Not signed"),
-    element("span", "tp-notice-reason", `${name} signs posts with Thumbprint. This one was not approved on their device.`)
-  );
+  line.append(iconElement("alert", "tp-notice-icon"), element("strong", null, label), element("span", "tp-notice-reason", reason));
   notice.append(line);
   if (links.length) {
     const gate = element("div", "tp-notice-gate");
-    gate.append(element("span", null, "Links in this post are blocked. The account may be compromised."));
+    gate.append(element("span", null, compromised ? "Links in this post are blocked." : "Links in this post are blocked. The account may be compromised."));
     const open = element("button", "tp-notice-open", "Unblock links");
     open.type = "button";
     open.addEventListener("click", (event) => {
@@ -199,12 +202,12 @@ function markUnsigned(post) {
     }
   }
   notice.addEventListener("click", (event) => event.stopPropagation());
-  post.textElement.before(notice);
+  if (danger) post.textElement.before(notice);
 
-  const mark = iconElement("unsigned", links.length ? "tp-mark tp-mark-unsigned tp-mark-danger" : "tp-mark tp-mark-unsigned");
+  const mark = iconElement("unsigned", danger ? "tp-mark tp-mark-unsigned tp-mark-danger" : "tp-mark tp-mark-unsigned");
   mark.setAttribute("role", "img");
-  mark.setAttribute("aria-label", "Not signed");
-  mark.title = `Not signed: ${name} signs posts with Thumbprint, and this one was not approved on their device`;
+  mark.setAttribute("aria-label", label);
+  mark.title = `${label}: ${reason}`;
   mark.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -253,11 +256,14 @@ async function scan() {
   }
   pending.forEach(({ article, post, key }, index) => {
     if (article.dataset.tpKey !== key) return; // X recycled the node while we waited
-    clearMarks(article);
     const result = results?.[index];
     if (!result) return delete article.dataset.tpKey; // lookup failed, retry on next scan
+    const stamp = key + JSON.stringify(result) + dimUnsigned;
+    if (article.dataset.tpStamp === stamp && (result.state === "none" || article.querySelector(".tp-mark"))) return; // nothing changed
+    article.dataset.tpStamp = stamp;
+    clearMarks(article);
     if (result.state === "certified") markCertified(post, result);
-    else if (result.state === "unsigned") markUnsigned(post);
+    else if (result.state === "unsigned") markUnsigned(post, result.compromised);
     else if (dimUnsigned) article.classList.add("tp-dim");
   });
 }
@@ -341,3 +347,5 @@ new MutationObserver(() => {
 }).observe(document.body, { childList: true, subtree: true });
 scan();
 addComposerButtons();
+// Signatures and the compromised flag can arrive after a post is on screen, so look again.
+setInterval(() => document.visibilityState === "visible" && rescanAll(), 4000);
