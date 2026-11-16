@@ -229,7 +229,7 @@
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / compose</div><img src="/site/composer.png" alt="X's composer with the Thumbprint button showing Check your phone" loading="lazy" width="610" height="300"></figure>
       </div>
       <div class="step reveal">
-        <div><span class="label"><span class="num">02</span>Approve</span><h3>Read it on your phone, then use your fingerprint</h3><p>The Seeker shows the words you are about to publish. Its Seed Vault signs them only after a double tap and a fingerprint, so nothing on your laptop can approve a post for you.</p></div>
+        <div><span class="label"><span class="num">02</span>Approve</span><h3>Read it on your phone, then use your fingerprint</h3><p>The Seeker shows the words you are about to publish. A key locked inside the phone's secure hardware signs them, and it works only with your fingerprint. No password or PIN can stand in, so nothing on your laptop and no stolen login can approve a post for you. You can also write the post right in the app.</p></div>
         <figure class="window phone" style="margin:0"><img src="/site/phone.png" alt="The Seeker showing the post text with an Approve with fingerprint button" loading="lazy" width="480" height="810"></figure>
       </div>
       <div class="step reveal">
@@ -248,7 +248,7 @@
   </div>
 
   <div class="band" id="chain">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>02 // The chain</span><span>Network: <b>Solana devnet</b></span><span>Signer: <b>Seed Vault</b></span><span>Fees for the owner: <b>none</b></span></div>
+    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>02 // The chain</span><span>Network: <b>Solana devnet</b></span><span>Signer: <b>fingerprint key</b></span><span>Fees for the owner: <b>none</b></span></div>
     <div class="pad" style="padding-bottom:48px"><h2>The crypto stays out of sight.</h2></div>
     <div class="cards">
       <div class="reveal"><span class="label"><i class="sq"></i>Verify</span><h3>Words, signed and checked onchain</h3><p>The Seeker signs a readable message. The program verifies that signature itself and computes the post's hash from the signed text, so the server can pay fees but cannot forge an approval.</p></div>
@@ -289,10 +289,10 @@
       </div>
       <div><span class="label"><i class="sq"></i>Account owners</span><h3>Protect your followers</h3>
         <ol>
-          <li>Install the extension and open its popup.</li>
-          <li>Scan the pairing code with your Seeker.</li>
-          <li>Sign in with X, then link the account with a fingerprint.</li>
-          <li>Press the Thumbprint button before you post.</li>
+          <li>Install the <a href="/thumbprint.apk">Thumbprint app</a> on your Seeker.</li>
+          <li>Link your X account once with your wallet.</li>
+          <li>Write posts in the app, or press the Thumbprint button on your laptop.</li>
+          <li>Approve each one with your fingerprint.</li>
         </ol>
       </div>
     </div>
@@ -315,14 +315,14 @@
 
   // ---- Hero simulation: one signed post, then a hijack, on a loop ----
   const SCRIPT = [
-    { phase: "SIGNING", log: ["composer", "draft", "gm. Mainnet is live, details soon."] },
+    { phase: "SIGNING", log: ["composer", "draft", "Staking is live. Only use the link in our bio."] },
     { log: ["seeker", "wait", "showing the exact text, waiting for a fingerprint"], kind: "wait" },
-    { log: ["seeker", "signed", "fingerprint accepted by Seed Vault"], kind: "ok" },
+    { log: ["seeker", "signed", "fingerprint matched, key unlocked"], kind: "ok" },
     { log: ["solana", "attest", "program checked the signature, hash recorded"], kind: "ok" },
-    { log: ["x.com", "posted", "Post pressed for the owner"], row: { text: "gm. Mainnet is live, details soon.", state: "SIGNED" } },
-    { phase: "HIJACKED", log: ["x.com", "login", "new session from an unknown laptop"], kind: "bad" },
-    { log: ["x.com", "posted", "airdrop is live, claim at sol-claim.xyz"], kind: "bad", row: { text: "Airdrop is live. Claim now:", link: "sol-claim.xyz", state: "NOT SIGNED" } },
-    { log: ["reader", "blocked", "no approval from the device, link blocked"], kind: "bad" },
+    { log: ["x.com", "posted", "Post pressed for the owner"], row: { text: "Staking is live. Only use the link in our bio.", state: "SIGNED" } },
+    { phase: "HIJACKED", log: ["x.com", "login", "SIM swap: new session from an unknown laptop"], kind: "bad" },
+    { log: ["x.com", "posted", "surprise airdrop, connect wallet at sol-claim.xyz"], kind: "bad", row: { text: "Surprise airdrop for holders. 2 hours only. Connect your wallet:", link: "sol-claim.xyz", state: "NOT SIGNED" } },
+    { log: ["reader", "blocked", "no fingerprint behind this post, link blocked before anyone clicks"], kind: "bad" },
     { phase: "KILL SWITCH", log: ["seeker", "report", "owner taps: my account was hacked"], kind: "wait" },
     { log: ["solana", "flagged", "compromised, visible to every reader"], kind: "bad" },
     { phase: "RECOVERED", log: ["seeker", "recover", "owner has the account back"], kind: "ok" },
