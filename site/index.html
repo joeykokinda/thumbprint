@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Thumbprint: every post approved with a fingerprint</title>
+<meta name="description" content="Crypto accounts on X approve each post with a fingerprint on a Solana Seeker. When an account is hijacked, its posts show up as not signed.">
+<meta property="og:title" content="Thumbprint">
+<meta property="og:description" content="Your account can be hacked. Your identity can't.">
+<link rel="icon" href="/icon.svg">
+<style>
+  :root { --accent: #14f195; --danger: #ff5a64; --text: #e7e9ea; --muted: #8b9198; --border: #24282c; --surface: #0e1012; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #000; color: var(--text); font: 400 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
+  .brand svg { width: 24px; height: 24px; color: var(--accent); }
+  nav { display: flex; gap: 24px; font-size: 15px; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 88px 0 72px; max-width: 760px; }
+  h1 { margin: 0 0 20px; font-size: clamp(40px, 6.4vw, 68px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 700; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lede { margin: 0 0 32px; font-size: 20px; color: var(--muted); max-width: 620px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .button { display: inline-flex; align-items: center; height: 48px; padding: 0 24px; border-radius: 9999px; font-weight: 700; font-size: 16px; text-decoration: none; }
+  .primary { background: var(--accent); color: #000; }
+  .quiet { border: 1px solid var(--border); }
+  .quiet:hover { border-color: #3a4046; }
+  section { padding: 72px 0; border-top: 1px solid var(--border); }
+  h2 { margin: 0 0 12px; font-size: clamp(28px, 3.6vw, 38px); line-height: 1.15; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 40px; color: var(--muted); max-width: 640px; }
+  .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 48px; align-items: center; padding: 28px 0; }
+  .step:nth-of-type(even) .shot { order: -1; }
+  .step h3 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.01em; }
+  .step p { margin: 0; color: var(--muted); }
+  .number { margin-bottom: 12px; font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; }
+  .danger .number { color: var(--danger); }
+  .shot { margin: 0; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot.phone { max-width: 260px; justify-self: center; background: #000; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .card { padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  .card h3 { margin: 0 0 8px; font-size: 17px; }
+  .card p { margin: 0; font-size: 15px; color: var(--muted); }
+  code { font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .live { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; }
+  .stat { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat + p { margin-bottom: 20px; }
+  .feed { margin: 0; padding: 0; list-style: none; }
+  .feed li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .feed li:last-child { border-bottom: 0; }
+  .feed a { color: var(--accent); text-decoration: none; font-weight: 700; }
+  .feed span { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--accent); }
+  ol.install { margin: 0; padding-left: 20px; color: var(--muted); }
+  ol.install li { padding: 6px 0; }
+  ol.install strong { color: var(--text); }
+  footer { padding: 40px 0 56px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  @media (max-width: 760px) {
+    nav a:not(.keep) { display: none; }
+    .hero { padding: 56px 0 48px; }
+    .step, .live { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .step:nth-of-type(even) .shot { order: 0; }
+    .grid { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <a class="brand" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>
+      Thumbprint
+    </a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#solana">Solana</a>
+      <a href="#live">Live</a>
+      <a href="#install">Install</a>
+      <a class="keep" href="https://github.com/joeykokinda/thumbprint">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h1>Your account can be hacked. <em>Your identity can't.</em></h1>
+    <p class="lede">Crypto accounts on X approve every post with a fingerprint on a Solana Seeker. When someone takes over the account, their posts show up as not signed, and the drainer link is blocked.</p>
+    <div class="actions">
+      <a class="button primary" href="#install">Get the extension</a>
+      <a class="button quiet" href="#how">See how it works</a>
+    </div>
+  </div>
+
+  <section id="how">
+    <h2>A password can be stolen. A thumb on a phone cannot.</h2>
+    <p class="sub">Project and founder accounts get taken over, and the attacker posts a "claim your airdrop" link to followers who trust the account. Thumbprint ties each post to a device the attacker does not have.</p>
+
+    <div class="step">
+      <div><div class="number">01 · WRITE</div><h3>Post like you always do</h3><p>A small button sits next to Post in X's own composer. Press it and the draft goes to your Seeker. Nothing else about X changes.</p></div>
+      <figure class="shot"><img src="/site/composer.png" alt="X's composer with the Thumbprint button showing Check your phone" loading="lazy" width="610" height="300"></figure>
+    </div>
+    <div class="step">
+      <div><div class="number">02 · APPROVE</div><h3>Read it on your phone, then use your fingerprint</h3><p>The Seeker shows the words you are about to publish. Its Seed Vault signs them only after a double tap and a fingerprint, so nothing on your laptop can approve a post for you.</p></div>
+      <figure class="shot phone"><img src="/site/phone.png" alt="The Seeker showing the post text with an Approve with fingerprint button" loading="lazy" width="480" height="810"></figure>
+    </div>
+    <div class="step">
+      <div><div class="number">03 · READ</div><h3>Followers see the mark</h3><p>Approved posts carry a fingerprint next to the name, the same size as the verified check. The card shows when it was approved, on which device, and links to the record on Solana.</p></div>
+      <figure class="shot"><img src="/site/signed.png" alt="A post on X with the Thumbprint mark and a card reading Signed with fingerprint" loading="lazy" width="600" height="360"></figure>
+    </div>
+    <div class="step danger">
+      <div><div class="number">04 · HIJACKED</div><h3>A post without the phone stands out</h3><p>If an account that signs its posts publishes one that is not approved, it is flagged in red and any links in it are blocked until the reader chooses to open them.</p></div>
+      <figure class="shot"><img src="/site/compromised.png" alt="Two signed posts and one flagged in red as not approved on the owner's device" loading="lazy" width="600" height="334"></figure>
+    </div>
+    <div class="step danger">
+      <div><div class="number">05 · KILL SWITCH</div><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session.</p></div>
+      <figure class="shot"><img src="/site/banner.png" alt="An X profile with a red Account compromised banner under the name" loading="lazy" width="600" height="270"></figure>
+    </div>
+  </section>
+
+  <section id="solana">
+    <h2>What the chain does</h2>
+    <p class="sub">The crypto stays out of sight. Readers install an extension. Owners use a phone they already carry, and never pay a fee.</p>
+    <div class="grid">
+      <div class="card"><h3>Words, signed and checked onchain</h3><p>The Seeker signs a readable message. The program verifies that signature itself and computes the post's hash from the signed text, so the server can pay fees but cannot forge an approval.</p></div>
+      <div class="card"><h3>One device, one account</h3><p>Each Seeker carries a Genesis Token minted once per device. The device's record is derived from it, and a handle can be linked only once, after the owner proves the X account is theirs.</p></div>
+      <div class="card"><h3>Public and permanent</h3><p>Every approval is an event anyone can read. A QuickNode Stream carries them to the index the extension looks up, and each mark links to its transaction.</p></div>
+    </div>
+    <p style="margin:24px 0 0;color:var(--muted);font-size:15px">Program on devnet: <code>BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc</code></p>
+  </section>
+
+  <section id="live">
+    <h2>Live from the chain</h2>
+    <p class="sub">Approvals recorded by this server. Each one opens its proof page.</p>
+    <div class="live">
+      <div class="card">
+        <div class="stat" id="total">0</div><p>posts approved</p>
+        <div class="stat" id="accounts">0</div><p>accounts protected</p>
+      </div>
+      <div class="card"><ul class="feed" id="feed"><li><span>Waiting for the first approval.</span></li></ul></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Try it</h2>
+    <p class="sub">Reading needs only the extension. Signing needs a Solana Seeker.</p>
+    <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <div class="card"><h3>Readers</h3>
+        <ol class="install">
+          <li>Download the <a href="https://github.com/joeykokinda/thumbprint">repository</a>.</li>
+          <li>Open <strong>chrome://extensions</strong> and turn on Developer mode.</li>
+          <li>Choose <strong>Load unpacked</strong> and pick the <strong>extension</strong> folder.</li>
+          <li>Open X. Signed posts carry the mark.</li>
+        </ol>
+      </div>
+      <div class="card"><h3>Account owners</h3>
+        <ol class="install">
+          <li>Install the extension and open its popup.</li>
+          <li>Scan the pairing code with your Seeker.</li>
+          <li>Prove the X account is yours, then link it with a fingerprint.</li>
+          <li>Press the Thumbprint button before you post.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Built for the University Blockchain Conference 2026 hackathon. Runs on Solana devnet.</span>
+    <a href="https://github.com/joeykokinda/thumbprint">Source on GitHub</a>
+  </footer>
+</div>
+
+<script>
+  const ago = (seconds) => {
+    const minutes = Math.floor((Date.now() / 1000 - seconds) / 60);
+    return minutes < 1 ? "just now" : minutes < 60 ? minutes + " min ago" : minutes < 1440 ? Math.floor(minutes / 60) + " h ago" : Math.floor(minutes / 1440) + " d ago";
+  };
+  async function refresh() {
+    const data = await (await fetch("/v1/recent")).json();
+    document.getElementById("total").textContent = data.total;
+    document.getElementById("accounts").textContent = data.accounts;
+    if (!data.recent.length) return;
+    const feed = document.getElementById("feed");
+    feed.replaceChildren(...data.recent.map((row) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = "/p/" + encodeURIComponent(row.signature);
+      link.textContent = "@" + row.handle.slice(2);
+      const dot = document.createElement("i");
+      dot.className = "dot";
+      link.prepend(dot);
+      const when = document.createElement("span");
+      when.textContent = ago(row.timestamp);
+      item.append(link, when);
+      return item;
+    }));
+  }
+  refresh().catch(() => {});
+  setInterval(() => document.visibilityState === "visible" && refresh().catch(() => {}), 5000);
+</script>
+</html>

@@ -159,7 +159,14 @@ function markCertified(post, result) {
   });
   // Inside the name link's own row, right after X's badge. The click handler above keeps
   // a click on the mark from following the profile link.
+  quietHover(mark);
   (post.profileLink.firstElementChild || post.profileLink).append(mark);
+}
+
+// The mark sits inside X's profile link. Keep X from seeing the pointer arrive on it, or its
+// own profile preview opens underneath our card.
+function quietHover(mark) {
+  for (const type of ["mouseover", "pointerover", "mouseenter", "pointerenter"]) mark.addEventListener(type, (event) => event.stopPropagation());
 }
 
 // An unsigned post is a caution; an unsigned post carrying a link is how drainers work.
@@ -218,6 +225,7 @@ function markUnsigned(post, compromised) {
     event.preventDefault();
     event.stopPropagation();
   });
+  quietHover(mark);
   (post.profileLink.firstElementChild || post.profileLink).append(mark);
 }
 

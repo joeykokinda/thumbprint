@@ -14,6 +14,10 @@ const PROGRAM_RPC = process.env.PROGRAM_RPC || "https://api.devnet.solana.com";
 const MAINNET_RPC = process.env.MAINNET_RPC || "https://api.mainnet-beta.solana.com";
 const STREAM_TOKEN = process.env.STREAM_TOKEN; // set once the QuickNode Stream is live: it becomes the only data source
 const DEV = process.env.THUMBPRINT_DEV === "1"; // enables /dev/* seeding and skips the token check
+// Optional "Sign in with X" for proving handle control (OAuth 2.0 with PKCE). Without these,
+// linking uses the proof post in proof.ts.
+const X_CLIENT_ID = process.env.X_CLIENT_ID;
+const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
 const SGT_GROUP = "GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te";
 const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const APPROVAL_TIMEOUT_MS = 120_000;
@@ -145,10 +149,57 @@ async function device(owner: string) {
     owner,
     sgtMint: token.mint,
     proofCode: proofCode(owner),
+    xLogin: Boolean(X_CLIENT_ID),
+    provenHandle: signedIn.get(owner) ?? null,
     handle: account?.handle ?? null,
     compromised: account ? isCompromised(account.handle) : false,
     flagCount: account ? Number(account.flagCount) : 0,
   };
+}
+
+// ---- Sign in with X ----
+// ponytail: starting a sign-in names a wallet without proving it, so a stranger could attach
+// their own X account to someone's wallet here. It gains them nothing: linking still needs
+// that wallet's fingerprint over a message naming the handle. State lives in memory.
+const signedIn = new Map<string, string>(); // owner -> "x:handle" proven by X sign-in
+const signIns = new Map<string, { owner: string; session: string; verifier: string }>();
+const base64url = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
+
+function startSignIn(owner: string, session: string) {
+  new anchor.web3.PublicKey(owner);
+  const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  signIns.set(state, { owner, session, verifier });
+  setTimeout(() => signIns.delete(state), 600_000);
+  const query = new URLSearchParams({
+    response_type: "code",
+    client_id: X_CLIENT_ID!,
+    redirect_uri: `${PUBLIC_URL}/auth/x/callback`,
+    scope: "users.read tweet.read",
+    state,
+    code_challenge: new Bun.CryptoHasher("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+  });
+  return Response.redirect(`https://x.com/i/oauth2/authorize?${query}`, 302);
+}
+
+async function finishSignIn(state: string, code: string) {
+  const pending = signIns.get(state);
+  if (!pending) return new Response("This sign-in expired. Go back and try again.", { status: 400 });
+  signIns.delete(state);
+  const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded" };
+  if (X_CLIENT_SECRET) headers.authorization = "Basic " + Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString("base64");
+  const token = (await (
+    await fetch("https://api.x.com/2/oauth2/token", {
+      method: "POST",
+      headers,
+      body: new URLSearchParams({ code, grant_type: "authorization_code", client_id: X_CLIENT_ID!, redirect_uri: `${PUBLIC_URL}/auth/x/callback`, code_verifier: pending.verifier }),
+    })
+  ).json()) as any;
+  const me = (await (await fetch("https://api.x.com/2/users/me", { headers: { authorization: `Bearer ${token.access_token}` } })).json()) as any;
+  if (!me?.data?.username) return new Response("X did not confirm the account. Go back and try again.", { status: 400 });
+  signedIn.set(pending.owner, "x:" + String(me.data.username).toLowerCase());
+  return Response.redirect(`${PUBLIC_URL}/phone?session=${encodeURIComponent(pending.session)}`, 302);
 }
 
 const translate = (error: any) => {
@@ -162,8 +213,10 @@ const translate = (error: any) => {
 async function act(body: { kind: string; owner: string; handle?: string; proof?: string; compromised?: boolean; message: string; signature: string }) {
   // Our verifier signature on a link is only given for a handle whose own post carries this
   // device's code. Dev mode lets the test signer link without posting.
-  if (body.kind === "bind" && !(DEV && !body.proof) && (await verifyProof(body.owner, String(body.proof))) !== body.handle)
-    return { error: "That post was not made by this account." };
+  if (body.kind === "bind") {
+    const proven = signedIn.get(body.owner) === body.handle || (DEV && !body.proof) || (await verifyProof(body.owner, String(body.proof))) === body.handle;
+    if (!proven) return { error: "That post was not made by this account." };
+  }
   // The whole message rides in one transaction. Refuse early, before the owner is asked to sign.
   if (Buffer.byteLength(body.message) > MAX_MESSAGE_BYTES) return { error: "This post is too long to approve." };
   const owner = new anchor.web3.PublicKey(body.owner);
@@ -335,6 +388,16 @@ Bun.serve({
       if (!STREAM_TOKEN || url.searchParams.get("token") !== STREAM_TOKEN) return json({ error: "bad token" }, 401);
       return guarded(request.json().then((body: any) => ingestStream(body)));
     }
+    if (X_CLIENT_ID && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
+    if (X_CLIENT_ID && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("state") || "", url.searchParams.get("code") || "");
+    if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
+    if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
+    if (url.pathname === "/v1/recent")
+      return json({
+        total: (database.query("SELECT COUNT(*) AS count FROM attestations").get() as any).count,
+        accounts: (database.query("SELECT COUNT(*) AS count FROM bindings").get() as any).count,
+        recent: database.query("SELECT handle, timestamp, signature FROM attestations WHERE signature NOT LIKE 'dev-%' ORDER BY timestamp DESC LIMIT 6").all(),
+      });
     if (url.pathname === "/v1/proof")
       return guarded(verifyProof(url.searchParams.get("owner") || "", url.searchParams.get("link") || "").then((handle) => ({ handle })));
     if (request.method === "POST" && url.pathname === "/v1/act") return guarded(request.json().then((body: any) => act(body)));

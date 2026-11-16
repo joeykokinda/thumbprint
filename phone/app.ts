@@ -5,7 +5,7 @@ import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey } from "@solana/web3.js";
 import { attestMessage, bindMessage, flagMessage } from "./messages.ts";
 
-type Device = { owner: string; sgtMint: string; proofCode: string; handle: string | null; compromised: boolean; flagCount: number };
+type Device = { owner: string; sgtMint: string; proofCode: string; xLogin: boolean; provenHandle: string | null; handle: string | null; compromised: boolean; flagCount: number };
 type PostRequest = { handle: string; text: string };
 type Signed = { owner: string; signature: Uint8Array };
 
@@ -191,8 +191,26 @@ function body(): string {
       <p>Approve every post with your fingerprint. If someone takes over your account, their posts show up as not signed.</p></section>
       <button class="primary" data-action="connect">Connect Seeker</button>`;
 
+  if (!device.handle && device.provenHandle)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Link ${escapeHtml("@" + device.provenHandle.slice(2))}</h1>
+      <p>X confirmed this is your account. One Seeker protects one account. It cannot be changed later.</p></section>
+      <form data-action="link"><input type="hidden" name="handle" value="${escapeHtml(device.provenHandle.slice(2))}">
+      <button class="primary">Link with fingerprint</button></form>
+      <a class="button quiet" href="/auth/x?owner=${device.owner}&session=${encodeURIComponent(session)}">Use a different account</a>`;
+
   if (!device.handle && !SOFTWARE) {
     const proofText = `Protecting this account with Thumbprint. Posts I approve are signed by my Seeker. ${device.proofCode}`;
+    const byPost = `<p>Post this from the X account you want to protect. It proves the account is yours.</p>
+      <blockquote>${escapeHtml(proofText)}</blockquote>
+      <a class="button quiet" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(proofText)}">Post on X</a>
+      <form data-action="link"><label for="proof">Link to that post</label>
+      <div class="field"><input id="proof" name="proof" type="url" required inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="https://x.com/you/status/…"></div>
+      <button class="primary">Link with fingerprint</button></form>`;
+    if (device.xLogin)
+      return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Link your account</h1>
+        <p>Sign in to the X account you want to protect. Thumbprint only reads your handle.</p></section>
+        <a class="button primary" href="/auth/x?owner=${device.owner}&session=${encodeURIComponent(session)}">Sign in with X</a>
+        <details><summary>Prove it with a post instead</summary>${byPost}</details>`;
     return `<section><h1>Link your account</h1>
       <p>Post this from the X account you want to protect. It proves the account is yours.</p>
       <blockquote>${escapeHtml(proofText)}</blockquote>
