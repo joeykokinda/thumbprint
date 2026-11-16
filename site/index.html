@@ -100,7 +100,7 @@
 
   .strip { display: flex; flex-wrap: wrap; gap: 8px 32px; padding-top: 14px; padding-bottom: 14px; border-top: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); border-bottom: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); margin: 56px 40px 40px; }
   .strip.alert { border-color: color-mix(in srgb, var(--alert) 60%, transparent); }
-  .section { padding-bottom: 72px; }
+  .section { padding-top: 72px; padding-bottom: 72px; }
   .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: start; }
   .split p.body { margin: 24px 0 0; color: var(--muted); max-width: 46ch; }
 
@@ -242,6 +242,36 @@
   @keyframes alarm { from { box-shadow: 0 0 0 0 rgba(217, 31, 42, 0.4); } to { box-shadow: 0 0 0 14px rgba(217, 31, 42, 0); } }
   @media (max-width: 760px) { .step:nth-child(even) > :first-child { order: 0; } }
   @media (prefers-reduced-motion: reduce) { .xpost.drop, .xnote.slam, .xtext s.deny, .xcompose .tp.wait { animation: none; } .pointer { transition: none; } }
+  /* Why Solana: a dark block so the page does not end on five beige grids. */
+  .why { background: var(--term); color: #f1f0ea; }
+  .why-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 56px; align-items: end; padding-top: 80px; padding-bottom: 56px; }
+  .why-head p { margin: 0; color: #a3a59d; max-width: 42ch; }
+  .why-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--term-line); }
+  .why-grid > div { padding: 36px 40px 48px; border-left: 1px solid var(--term-line); transition: background-color 200ms; }
+  .why-grid > div:first-child { border-left: 0; }
+  .why-grid > div:hover { background: #121411; }
+  .why-num { display: block; font: 500 13px/1 var(--mono); letter-spacing: 0.12em; color: var(--glow); }
+  .why-grid h3 { margin: 56px 0 12px; font-size: 30px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
+  .why-grid p { margin: 0; color: #a3a59d; font-size: 17px; }
+  .why-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; padding-top: 20px; padding-bottom: 20px; border-top: 1px solid var(--term-line); color: #7d8079; text-decoration: none; }
+  .why-foot b { color: #d7dbd3; font-weight: 500; letter-spacing: 0; text-transform: none; overflow-wrap: anywhere; }
+  .why-foot:hover b { color: var(--glow); }
+  .start { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 0 40px 72px; }
+  .start-card { display: flex; flex-direction: column; padding: 36px; border: 1px solid var(--line); background: #fbfaf6; }
+  .start-card h3 { margin: 18px 0 10px; font-size: 34px; line-height: 1.02; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
+  .start-card p { margin: 0; color: var(--muted); max-width: 40ch; }
+  .start-card ol { margin: 28px 0 32px; padding: 0; list-style: none; counter-reset: step; border-top: 1px dashed var(--line); }
+  .start-card li { counter-increment: step; display: grid; grid-template-columns: 36px minmax(0, 1fr); padding: 14px 0; border-bottom: 1px dashed var(--line); font-size: 17px; }
+  .start-card li::before { content: "0" counter(step); font: 500 12px/1.9 var(--mono); letter-spacing: 0.1em; color: var(--accent); }
+  .start-card li b { font-weight: 600; }
+  .start-card .btn { margin-top: auto; align-self: flex-start; }
+  .start-card.dark { background: var(--ink); border-color: var(--ink); color: #f1f0ea; }
+  .start-card.dark p, .start-card.dark .label { color: #a3a59d; }
+  .start-card.dark ol, .start-card.dark li { border-color: #33352f; }
+  .start-card.dark li::before { color: var(--glow); }
+  .start-card.dark .btn { background: var(--glow); border-color: var(--glow); color: #000; }
+  .start-card.dark .btn:hover { background: #fff; border-color: #fff; }
+  @media (max-width: 760px) { .why-head, .why-grid, .start { grid-template-columns: minmax(0, 1fr); } .why-grid > div { border-left: 0; border-top: 1px solid var(--term-line); padding: 28px 20px 36px; } .why-grid h3 { margin-top: 28px; } .start { padding: 0 20px 48px; } }
   .steps { border-top: 1px solid var(--line); }
   .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 40px; border-bottom: 1px solid var(--line); }
   .step:last-child { border-bottom: 0; }
@@ -298,7 +328,7 @@
     </a>
     <nav>
       <a href="#how">How it works</a>
-      <a href="#chain">Chain</a>
+      <a href="#chain">Why trust it</a>
       <a href="https://github.com/joeykokinda/thumbprint">GitHub</a>
       <a class="btn small" href="#install">Install</a>
     </nav>
@@ -337,7 +367,6 @@
   </div>
 
   <div class="band section" id="how">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>01 // The problem</span><span>Attack: <b>account takeover</b></span><span>Payload: <b>drainer link</b></span><span>Missing: <b>proof of the owner</b></span></div>
     <div class="split pad">
       <div>
         <h2>A password can be stolen. A thumb on a phone cannot.</h2>
@@ -376,48 +405,43 @@
   </div>
 
   <div class="band">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>The app</span><span>Captured on a <b>real Seeker</b></span><span>Signer: <b>fingerprint only</b></span></div>
     <div class="flip pad">
       <div class="flip-steps">
-        <div class="flip-step" data-shot="0"><span class="label"><span class="num">01</span>Write</span><h3>Write the post on the phone</h3><p>Type it in the app. Nothing is sent to X yet. The words on this screen are the only words your fingerprint will approve.</p></div>
-        <div class="flip-step" data-shot="1"><span class="label"><span class="num">02</span>Approve</span><h3>Or approve one from your laptop</h3><p>Press the Thumbprint button in X's composer and the draft shows up here. Read it, touch the sensor, and the laptop posts it. Reject it and nothing goes out.</p></div>
-        <div class="flip-step alert" data-shot="2"><span class="label"><span class="num">03</span>Kill switch</span><h3>Hacked? Tell everyone in one touch</h3><p>You still hold the phone, so you still hold the key. One touch puts a warning on your profile for every reader, even while the attacker is logged in.</p></div>
+        <div class="flip-step" data-shot="0"><span class="label"><span class="num">01</span>Write</span><h3>Post from the app</h3><p>Type your post, touch the sensor, and X opens with it ready to send. What you see on this screen is exactly what your fingerprint approves.</p></div>
+        <div class="flip-step" data-shot="1"><span class="label"><span class="num">02</span>Approve</span><h3>Or post from your laptop, approve on the phone</h3><p>Write on X like normal and press the Thumbprint button. The post shows up on your phone. Touch the sensor and it goes out. Reject it and it doesn't.</p></div>
+        <div class="flip-step alert" data-shot="2"><span class="label"><span class="num">03</span>Hacked</span><h3>Lost your account? Let everyone know</h3><p>A hacker can take your password. They can't take your phone. One touch puts a warning on your profile that every reader sees, even while the hacker is still logged in.</p></div>
       </div>
       <div class="flip-stage"><div class="window phone" id="flip-phone"><img src="/site/app-write.png" alt="The Thumbprint app on a Seeker with a post typed and an Approve and post button" width="480" height="988" class="on"><img src="/site/app-approve.png" alt="The app showing a post sent from the laptop with an Approve with fingerprint button" width="480" height="988"><img src="/site/app-kill.png" alt="The app asking to report the account as compromised" width="480" height="988"></div><div class="flip-dots label" id="flip-dots"><i class="on"></i><i></i><i></i></div></div>
     </div>
   </div>
   </div>
 
-  <div class="band" id="chain">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>02 // The chain</span><span>Network: <b>Solana devnet</b></span><span>Signer: <b>fingerprint key</b></span><span>Fees for the owner: <b>none</b></span></div>
-    <div class="pad" style="padding-bottom:48px"><h2>The crypto stays out of sight.</h2></div>
-    <div class="cards">
-      <div class="reveal"><span class="label"><i class="sq"></i>Verify</span><h3>Words, signed and checked onchain</h3><p>The Seeker signs a readable message. The program verifies that signature itself and computes the post's hash from the signed text, so the server can pay fees but cannot forge an approval.</p></div>
-      <div class="reveal"><span class="label"><i class="sq"></i>Identity</span><h3>One device, one account</h3><p>Each Seeker carries a Genesis Token minted once per device. The device's record is derived from it, and a handle can be linked only once, after the owner proves the X account is theirs.</p></div>
-      <div class="reveal"><span class="label"><i class="sq"></i>Record</span><h3>Public and permanent</h3><p>Every approval is an event anyone can read. A QuickNode Stream carries them to the index the extension looks up, and each mark links to its transaction.</p></div>
+  <div class="band why" id="chain">
+    <div class="pad why-head"><h2>Why you can trust the green mark.</h2><p>You don't have to trust X, and you don't have to trust us. Every approval is checked and stored on Solana, where anyone can look.</p></div>
+    <div class="why-grid">
+      <div class="reveal"><span class="why-num">01</span><h3>It can't be faked</h3><p>Your phone signs the exact words of your post. Solana checks that signature before it records anything. Change one letter and it no longer matches.</p></div>
+      <div class="reveal"><span class="why-num">02</span><h3>One phone, one account</h3><p>Every Seeker is born with a one-of-a-kind token. Your account is tied to your phone and nobody else's, so there can't be a second "you".</p></div>
+      <div class="reveal"><span class="why-num">03</span><h3>Anyone can check</h3><p>Each green mark links to its public record. No login, no asking us. If we disappeared tomorrow, the proof would still be there.</p></div>
     </div>
-    <div class="pad label" style="padding-top:18px;padding-bottom:18px;border-top:1px solid var(--line)">Program · <b class="mono" style="letter-spacing:0;text-transform:none">EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS</b></div>
+    <a class="why-foot pad label" href="https://explorer.solana.com/address/EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS?cluster=devnet" target="_blank" rel="noopener"><span>See the program on Solana</span><b>EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS ↗</b></a>
   </div>
 
   <div class="band" id="install">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>04 // Try it</span><span>Readers: <b>extension only</b></span><span>Owners: <b>a Solana Seeker</b></span></div>
-    <div class="pad" style="padding-bottom:48px"><h2>Install in a minute.</h2></div>
-    <div class="cards two">
-      <div><span class="label"><i class="sq"></i>Readers</span><h3>See who really posted</h3>
-        <ol>
-          <li>Download the <a href="https://github.com/joeykokinda/thumbprint">repository</a>.</li>
-          <li>Open <b>chrome://extensions</b> and turn on Developer mode.</li>
-          <li>Choose <b>Load unpacked</b> and pick the <b>extension</b> folder.</li>
-          <li>Open X. Signed posts carry the mark.</li>
-        </ol>
+    <div class="pad" style="padding-top:72px;padding-bottom:40px"><h2>Start in a minute.</h2></div>
+    <div class="start">
+      <div class="start-card reveal">
+        <span class="label"><i class="sq"></i>I read crypto on X</span>
+        <h3>See which posts are real</h3>
+        <p>A free Chrome extension. Real posts get a green mark. Fakes get a warning and their links are blocked.</p>
+        <ol><li>Download it and unzip.</li><li>Open <b>chrome://extensions</b> and switch on <b>Developer mode</b>.</li><li>Click <b>Load unpacked</b> and pick the <b>extension</b> folder.</li></ol>
+        <a class="btn" href="https://github.com/joeykokinda/thumbprint/archive/refs/heads/main.zip">Download the extension <i class="arrow"></i></a>
       </div>
-      <div><span class="label"><i class="sq"></i>Account owners</span><h3>Protect your followers</h3>
-        <ol>
-          <li>Install the <a href="/thumbprint.apk">Thumbprint app</a> on your Seeker.</li>
-          <li>Link your X account once with your wallet.</li>
-          <li>Write posts in the app, or press the Thumbprint button on your laptop.</li>
-          <li>Approve each one with your fingerprint.</li>
-        </ol>
+      <div class="start-card dark reveal">
+        <span class="label"><i class="sq"></i>I post on X</span>
+        <h3>Protect your followers</h3>
+        <p>You need a Solana Seeker. After a one-time setup, every post takes one touch of your finger.</p>
+        <ol><li>Install the app on your Seeker.</li><li>Link your X account. You do this once.</li><li>Post from the app or your laptop, and approve with your fingerprint.</li></ol>
+        <a class="btn" href="/thumbprint.apk">Get the Seeker app <i class="arrow"></i></a>
       </div>
     </div>
   </div>
