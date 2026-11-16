@@ -261,8 +261,8 @@
   .start-card h3 { margin: 18px 0 10px; font-size: 34px; line-height: 1.02; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
   .start-card p { margin: 0; color: var(--muted); max-width: 40ch; }
   .start-card ol { margin: 28px 0 32px; padding: 0; list-style: none; counter-reset: step; border-top: 1px dashed var(--line); }
-  .start-card li { counter-increment: step; display: grid; grid-template-columns: 36px minmax(0, 1fr); padding: 14px 0; border-bottom: 1px dashed var(--line); font-size: 17px; }
-  .start-card li::before { content: "0" counter(step); font: 500 12px/1.9 var(--mono); letter-spacing: 0.1em; color: var(--accent); }
+  .start-card li { counter-increment: step; position: relative; padding: 14px 0 14px 36px; border-bottom: 1px dashed var(--line); font-size: 17px; }
+  .start-card li::before { content: "0" counter(step); position: absolute; left: 0; font: 500 12px/1.9 var(--mono); letter-spacing: 0.1em; color: var(--accent); }
   .start-card li b { font-weight: 600; }
   .start-card .btn { margin-top: auto; align-self: flex-start; }
   .start-card.dark { background: var(--ink); border-color: var(--ink); color: #f1f0ea; }
@@ -373,7 +373,7 @@
         <p class="body">Project and founder accounts get taken over, and the attacker posts a "claim your airdrop" link to followers who trust the account. Thumbprint ties each post to a device the attacker does not have.</p>
       </div>
       <div class="term reveal">
-        <div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span class="term-title">seed vault · seeker</span><span class="playing">SCANNING</span></div>
+        <div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span class="term-title">fingerprint key · seeker</span><span class="playing">SCANNING</span></div>
         <div class="print-wrap"><pre class="print" id="print" aria-hidden="true"></pre></div>
       </div>
     </div>
