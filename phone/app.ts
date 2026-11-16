@@ -1,11 +1,18 @@
-// Thumbprint phone page. Runs in Chrome on the Seeker and asks the Seed Vault wallet, through
-// Mobile Wallet Adapter, to sign a readable message. It builds that message itself from the text
-// it shows, so the laptop can never get the owner to sign something they did not read.
+// Thumbprint phone page. It builds every signed message itself from the text it shows, so the
+// laptop can never get the owner to sign something they did not read.
+//
+// It runs in two places on the Seeker:
+// - inside the Thumbprint app, where posts are approved by a key in the phone's secure hardware
+//   that only a fingerprint can use (the app exposes it as `ThumbprintKey`);
+// - in Chrome, once, where the Seed Vault wallet (through Mobile Wallet Adapter) proves this is
+//   a real Seeker and hands approval to that fingerprint key. The wallet may take a PIN, which
+//   is why it is not what approves posts.
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey } from "@solana/web3.js";
-import { attestMessage, bindMessage, flagMessage } from "./messages.ts";
+import "../extension/shared.js"; // normalizeText: the one rule that turns a post into the text that is signed
+import { approverMessage, attestMessage, bindMessage, flagMessage } from "./messages.ts";
 
-type Device = { owner: string; sgtMint: string; proofCode: string; xLogin: boolean; provenHandle: string | null; handle: string | null; compromised: boolean; flagCount: number };
+type Device = { owner: string; sgtMint: string; proofCode: string; xLogin: boolean; provenHandle: string | null; handle: string | null; approver: string | null; compromised: boolean; flagCount: number };
 type PostRequest = { handle: string; text: string };
 type Signed = { owner: string; signature: Uint8Array };
 
@@ -72,7 +79,22 @@ async function software(message?: string): Promise<Signed> {
   return { owner: address, signature: new Uint8Array(await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(message))) };
 }
 
-const signer = SOFTWARE ? software : seedVault;
+// The app's fingerprint key. `sign` shows the system fingerprint prompt with the message on it.
+const NATIVE = (window as any).ThumbprintKey as { publicKey(): string; sign(message: string): void; openBrowser(url: string): void } | undefined;
+const nativeKey = NATIVE?.publicKey() ? new PublicKey(fromBase64(NATIVE.publicKey())).toBase58() : "";
+// In Chrome: the app's key, which this page is here to link with the wallet.
+const linkingFor = query.get("approver") || "";
+const appLink = (parameters: string) => `intent://phone?${parameters}#Intent;scheme=thumbprint;package=org.pyras.thumbprint;end`;
+
+let fingerprintDone: ((result: { signature: string; error: string }) => void) | null = null;
+(window as any).thumbprintSigned = (signature: string, error: string) => fingerprintDone?.({ signature, error });
+const fingerprint = (message?: string) =>
+  new Promise<Signed>((resolve, reject) => {
+    fingerprintDone = (result) => (result.error ? reject(new Error(result.error)) : resolve({ owner: state.device!.owner, signature: fromBase64(result.signature) }));
+    NATIVE!.sign(message!);
+  });
+
+const signer = SOFTWARE ? software : NATIVE ? fingerprint : seedVault;
 
 async function refreshDevice(owner = state.device?.owner) {
   if (!owner) return;
@@ -80,7 +102,7 @@ async function refreshDevice(owner = state.device?.owner) {
   localStorage.setItem("device", JSON.stringify(state.device));
 }
 
-// One wallet prompt, one fingerprint. The server pays for and submits the transaction; the
+// One prompt per action. The server pays for and submits the transaction; the
 // program checks this signature onchain, so the server cannot act without it.
 async function signAndSubmit(action: object, message: string) {
   const signed = await signer(message);
@@ -108,15 +130,25 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
   link: (form) => {
     const fields = new FormData(form!);
     const proof = fields.get("proof")?.toString().trim();
-    run("Linking", async () => {
+    run("Opening wallet", async () => {
       // The account is whoever published the proof post; the test signer types a handle instead.
       const handle = proof
         ? (await api(`/v1/proof?owner=${state.device!.owner}&link=${encodeURIComponent(proof)}`)).handle
         : "x:" + fields.get("handle")!.toString().trim().replace(/^@/, "").toLowerCase();
-      await signAndSubmit({ kind: "bind", handle, proof }, bindMessage(handle));
+      const approver = linkingFor || state.device!.owner; // the test signer approves with its own key
+      await signAndSubmit({ kind: "bind", handle, proof, approver }, bindMessage(handle, approver));
       await refreshDevice();
     });
   },
+  // A reinstalled app or a changed fingerprint means a new key. The wallet moves approval to it.
+  moveKey: () =>
+    run("Opening wallet", async () => {
+      await refreshDevice();
+      const device = state.device!;
+      await signAndSubmit({ kind: "approver", approver: linkingFor }, approverMessage(device.handle!, linkingFor, device.flagCount));
+      await refreshDevice();
+    }),
+  openLink: () => NATIVE!.openBrowser(`${location.origin}/phone?approver=${nativeKey}&session=${encodeURIComponent(session)}`),
   approve: () =>
     run("Waiting for your fingerprint", async () => {
       const request = state.request!;
@@ -125,6 +157,14 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
       state.request = null;
       setTimeout(() => ((state.lastSigned = ""), render()), 4000);
     }),
+  // Posting from this phone: approve what was typed, then hand the same words to X's composer.
+  compose: (form) => {
+    const draft = new FormData(form!).get("text")!.toString().trim();
+    run("Waiting for your fingerprint", async () => {
+      await signAndSubmit({ kind: "attest" }, attestMessage(state.device!.handle!, (globalThis as any).normalizeText(draft)));
+      location.href = `https://x.com/intent/post?text=${encodeURIComponent(draft)}`;
+    });
+  },
   reject: () => {
     socket?.send(JSON.stringify({ type: "reject" }));
     state.request = null;
@@ -190,6 +230,18 @@ const GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 function body(): string {
   const device = state.device;
+  if (NATIVE && !nativeKey)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Add a fingerprint first</h1>
+      <p>Thumbprint approves posts with your fingerprint. Add one in this phone's settings, then open the app again.</p></section>`;
+  if (NATIVE && (!device?.handle || device.approver !== nativeKey))
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Thumbprint</h1>
+      <p>Link this Seeker once with your wallet. After that, every post is approved by your fingerprint and nothing else.</p></section>
+      <button class="primary" data-action="openLink">Link this Seeker</button>`;
+  if (!NATIVE && !SOFTWARE && !linkingFor)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Open the Thumbprint app</h1>
+      <p>Posts are approved in the app, with your fingerprint.</p></section>
+      <a class="button primary" href="${appLink(`session=${encodeURIComponent(session)}`)}">Open Thumbprint</a>
+      <a class="button quiet" href="/thumbprint.apk">Get the app</a>`;
   if (!device)
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Thumbprint</h1>
       <p>Approve every post with your fingerprint. If someone takes over your account, their posts show up as not signed.</p></section>
@@ -199,7 +251,7 @@ function body(): string {
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Link ${escapeHtml("@" + device.provenHandle.slice(2))}</h1>
       <p>X confirmed this is your account. One Seeker protects one account. It cannot be changed later.</p></section>
       <form data-action="link"><input type="hidden" name="handle" value="${escapeHtml(device.provenHandle.slice(2))}">
-      <button class="primary">Link with fingerprint</button></form>
+      <button class="primary">Link with wallet</button></form>
       <a class="button quiet" href="/auth/x?owner=${device.owner}&session=${encodeURIComponent(session)}">Use a different account</a>`;
 
   if (!device.handle && !SOFTWARE) {
@@ -209,7 +261,7 @@ function body(): string {
       <a class="button quiet" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(proofText)}">Post on X</a>
       <form data-action="link"><label for="proof">Link to that post</label>
       <div class="field"><input id="proof" name="proof" type="url" required inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="https://x.com/you/status/…"></div>
-      <button class="primary">Link with fingerprint</button></form>`;
+      <button class="primary">Link with wallet</button></form>`;
     if (device.xLogin)
       return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Link your account</h1>
         <p>Sign in to the X account you want to protect. Thumbprint only reads your handle.</p></section>
@@ -221,7 +273,7 @@ function body(): string {
       <a class="button quiet" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(proofText)}">Post on X</a></section>
       <form data-action="link"><label for="proof">Link to that post</label>
       <div class="field"><input id="proof" name="proof" type="url" required inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="https://x.com/you/status/…"></div>
-      <button class="primary">Link with fingerprint</button></form>
+      <button class="primary">Link with wallet</button></form>
       <p class="hint">One Seeker protects one account. It cannot be changed later.</p>`;
   }
 
@@ -230,10 +282,18 @@ function body(): string {
       <p>This Seeker can protect one X account. It cannot be changed later.</p></section>
       <form data-action="link"><label for="handle">X handle</label>
       <div class="field"><span>@</span><input id="handle" name="handle" required pattern="@?[A-Za-z0-9_]{1,15}" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="yourhandle"></div>
-      <button class="primary">Link with fingerprint</button></form>
+      <button class="primary">Link with wallet</button></form>
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div></dl>`;
 
   const name = "@" + device.handle.slice(2);
+  if (linkingFor && device.approver !== linkingFor)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>This Seeker protects ${escapeHtml(name)}</h1>
+      <p>The app on this phone has a new fingerprint key. Confirm with your wallet to approve posts with it.</p></section>
+      <button class="primary" data-action="moveKey">Use this phone's fingerprint</button>`;
+  if (linkingFor)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>${escapeHtml(name)} is linked</h1>
+      <p>From here on, posts are approved in the app with your fingerprint.</p></section>
+      <a class="button primary" href="${appLink(`owner=${device.owner}&session=${encodeURIComponent(session)}`)}">Back to Thumbprint</a>`;
   if (state.request) {
     const mismatch = state.request.handle !== device.handle;
     return `<section><p class="eyebrow">Post as ${escapeHtml("@" + state.request.handle.slice(2))}</p>
@@ -255,7 +315,9 @@ function body(): string {
       <button class="quiet" data-action="cancelKill">Cancel</button>`;
 
   return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Protecting ${escapeHtml(name)}</h1>
-      <p>${state.lastSigned ? "Signed. Your post is going out." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
+      <p>${state.lastSigned ? "Signed. Your post is going out." : NATIVE ? "Write a post here, or on your computer. Either way it goes out only with your fingerprint." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
+      ${NATIVE ? `<form data-action="compose"><textarea name="text" required rows="4" maxlength="280" placeholder="Write a post"></textarea>
+      <button class="primary">Approve and post</button></form>` : ""}
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div>
       <div><dt>Computer</dt><dd>${state.online ? "Paired" : "Not connected"}</dd></div></dl>
       <button class="quiet danger" data-action="askKill">My account was hacked</button>`;
@@ -264,7 +326,7 @@ function body(): string {
 function render() {
   const main = document.querySelector("main")!;
   main.innerHTML = state.busy
-    ? `<section class="hero"><div class="glyph pulse">${GLYPH}</div><h1>${state.busy}</h1><p>${SOFTWARE ? "Signing with the test key." : "Double-tap the side button, then use your fingerprint."}</p></section>`
+    ? `<section class="hero"><div class="glyph pulse">${GLYPH}</div><h1>${state.busy}</h1><p>${SOFTWARE ? "Signing with the test key." : NATIVE ? "Touch the fingerprint sensor." : "Confirm in your wallet."}</p></section>`
     : body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "") + (SOFTWARE ? `<p class="badge">Test signer. No Seeker, no fingerprint.</p>` : "");
 }
 
@@ -280,4 +342,4 @@ document.addEventListener("submit", (event) => {
 
 render();
 listen();
-refreshDevice().then(render, () => {});
+refreshDevice(query.get("owner") || undefined).then(render, () => {});

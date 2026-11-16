@@ -2,7 +2,7 @@
 // POST {server}/v1/stream?token={STREAM_TOKEN}.
 // Keeps only successful transactions that invoke the Thumbprint program and forwards their
 // signature, time and logs; every other block is dropped (null), so the server sees nothing else.
-const PROGRAM_ID = "BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc";
+const PROGRAM_ID = "EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS";
 
 function main(stream) {
   const blocks = [stream.data ?? stream].flat(Infinity);

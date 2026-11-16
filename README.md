@@ -12,8 +12,9 @@ The extension talks to the live server out of the box, so loading it is enough t
 
 ## What it does
 
-- **Link once.** The owner publishes one post carrying their device's code, then confirms with a
-  fingerprint. One Seeker protects one handle.
+- **Link once.** The owner publishes one post carrying their device's code, then confirms in the
+  Seeker's wallet. That hands approval to a key inside the Thumbprint app that only a
+  fingerprint can use. One Seeker protects one handle.
 - **Approve each post.** A small button next to Post in X's composer sends the draft to the
   paired Seeker. The phone shows the text, with each link reduced to the site it points to, the
   owner approves with a fingerprint, the approval lands on Solana, and the extension presses Post.
@@ -48,15 +49,16 @@ this handle. It does not say who wrote the text or whether it is true.
 
 | Part | Path | Role |
 | --- | --- | --- |
-| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `set_compromised` |
+| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `set_compromised`, `set_approver` |
 | Server | `server/` | Bun: pairing relay, fee payer, indexer, lookup API, proof pages |
-| Phone page | `phone/` | Web page on the Seeker, talks to Seed Vault through Mobile Wallet Adapter |
+| Phone page | `phone/` | The app's screen; in Chrome it does the one wallet step through Mobile Wallet Adapter |
+| App | `android/` | Android app: the phone page plus a fingerprint-only Ed25519 key in secure hardware |
 | Extension | `extension/` | Manifest V3 Chrome extension for x.com |
 | Stream filter | `quicknode/filter.js` | QuickNode Stream filter function |
 
 ## How Solana is used
 
-Program ID (devnet): `BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc`
+Program ID (devnet): `EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS`
 
 - **The device signs words, the program checks them.** The Seed Vault wallet only signs
   transactions for the network it is set to, and the Genesis Token lives on mainnet. So the
@@ -76,6 +78,12 @@ Program ID (devnet): `BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc`
 - **Handle claims.** A handle is a PDA, so it can be linked once. Linking also needs the
   verifier key's signature, which the server gives only after reading a public post from that
   handle carrying the device's code (`server/proof.ts`).
+- **Fingerprint only.** The Seed Vault wallet accepts a PIN, and a PIN can be typed by a script
+  or a thief. So the wallet signs once, at linking, to name an approval key (`Device.approver`).
+  That key is generated inside the phone's secure hardware by the app (`android/`), cannot be
+  exported, signs only after a fingerprint match, and is destroyed if a fingerprint is added to
+  the phone. `attest` and `set_compromised` accept that key alone; `set_approver` lets the
+  wallet move approval to a new key if it is lost.
 - **Kill switch.** `set_compromised` signs a message with a counter stored on the device
   account, so a captured signature cannot be replayed.
 
@@ -132,6 +140,9 @@ bun server/smoke.ts                       # links a throwaway key, approves a po
 The server pays fees and rent from `~/.config/solana/id.json`; fund it at
 [faucet.solana.com](https://faucet.solana.com).
 
+**App.** `android/build.sh` builds `site/thumbprint.apk` with the Android SDK build tools alone
+(no Gradle); install it with `adb install`. It loads the live server's phone page.
+
 **Phone.** With a Seeker on USB, `adb reverse tcp:8787 tcp:8787`, then scan the pairing code in
 the extension popup. Without a Seeker, open
 `http://localhost:8787/phone?session=test&signer=software` for a test key held by the page
@@ -157,7 +168,7 @@ Genesis Token mint cloned from mainnet.
 - Only Seeker owners can sign, and only readers with the extension see anything.
 - One trusted verifier vouches for handle control, and it reads X's public embed endpoint.
 - Links are bound by domain, not full path, because X rewrites them.
-- Someone who holds the phone and can unlock it can sign.
+- Someone who holds the phone and knows the wallet PIN can move approval to a key of their own.
 - The extension depends on X's page structure.
 - A post longer than one transaction can carry (about 600 bytes) cannot be approved yet.
 - Posts cut off by "Show more" get no mark in the timeline.

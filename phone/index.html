@@ -40,6 +40,8 @@
   .field:focus-within { border-color: var(--accent); }
   .field span { color: var(--muted); }
   input { flex: 1; min-width: 0; height: 52px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
+  textarea { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; outline: 0; resize: none; background: var(--surface); color: var(--text); font: inherit; font-size: 18px; line-height: 1.4; }
+  textarea:focus { border-color: var(--accent); }
   dl { margin: 0; border-top: 1px solid var(--border); }
   dl div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   dt { color: var(--muted); }
@@ -49,5 +51,5 @@
   @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 </style>
 <main></main>
-<script src="/phone.js"></script>
+<script src="/phone.js?v=3"></script>
 </html>

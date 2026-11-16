@@ -152,6 +152,7 @@ async function device(owner: string) {
     xLogin: Boolean(X_CLIENT_ID),
     provenHandle: signedIn.get(owner) ?? null,
     handle: account?.handle ?? null,
+    approver: account?.approver.toBase58() ?? null,
     compromised: account ? isCompromised(account.handle) : false,
     flagCount: account ? Number(account.flagCount) : 0,
   };
@@ -231,7 +232,7 @@ const translate = (error: any) => {
 // The phone sends a message it signed; we wrap it in a transaction, pay for it and submit it.
 // The program verifies the signature against the message it expects, so this server cannot
 // record anything the device did not sign.
-async function act(body: { kind: string; owner: string; handle?: string; proof?: string; compromised?: boolean; message: string; signature: string }) {
+async function act(body: { kind: string; owner: string; handle?: string; approver?: string; proof?: string; compromised?: boolean; message: string; signature: string }) {
   // Our verifier signature on a link is only given for a handle whose own post carries this
   // device's code. Dev mode lets the test signer link without posting.
   if (body.kind === "bind") {
@@ -244,22 +245,28 @@ async function act(body: { kind: string; owner: string; handle?: string; proof?:
   const token = await findGenesisToken(body.owner);
   if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
   const accounts = { owner, sgtTokenAccount: new anchor.web3.PublicKey(token.tokenAccount), sgtMint: new anchor.web3.PublicKey(token.mint) };
+  // Linking and moving the approval key are signed by the wallet. Posts and the kill switch are
+  // signed by the approval key, which in the app only a fingerprint can use.
+  const byWallet = body.kind === "bind" || body.kind === "approver";
+  const account = byWallet ? null : await program.account.device.fetchNullable(deviceAddress(token.mint));
+  if (!byWallet && !account) return { error: "This Seeker is not linked to an account yet." };
   const proof = anchor.web3.Ed25519Program.createInstructionWithPublicKey({
-    publicKey: owner.toBytes(),
+    publicKey: (byWallet ? owner : account.approver).toBytes(),
     message: Buffer.from(body.message),
     signature: Buffer.from(body.signature, "base64"),
   });
   const method =
     body.kind === "bind"
-      ? program.methods.bind(String(body.handle)).accounts({ payer: payer.publicKey, verifier: payer.publicKey, ...accounts })
-      : body.kind === "flag"
+      ? program.methods.bind(String(body.handle), new anchor.web3.PublicKey(body.approver || body.owner)).accounts({ payer: payer.publicKey, verifier: payer.publicKey, ...accounts })
+      : body.kind === "approver"
+        ? program.methods.setApprover(new anchor.web3.PublicKey(String(body.approver))).accounts(accounts)
+        : body.kind === "flag"
         ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
         : program.methods.attest().accounts(accounts);
   if (body.kind === "attest") {
     // An approval already on record costs nothing to repeat, so a copied signature cannot be
     // replayed to drain the fee payer.
-    const account = await program.account.device.fetchNullable(deviceAddress(token.mint));
-    const text = account && body.message.startsWith(attestMessage(account.handle, "")) ? body.message.slice(attestMessage(account.handle, "").length) : null;
+    const text = body.message.startsWith(attestMessage(account.handle, "")) ? body.message.slice(attestMessage(account.handle, "").length) : null;
     const existing = text !== null && (database.query("SELECT signature FROM attestations WHERE handle = ? AND text_hash = ?").get(account.handle, sha256(text)) as any);
     if (existing) return { ok: true, signature: existing.signature };
   }
@@ -385,7 +392,8 @@ const phoneBundle = await Bun.build({ entrypoints: [new URL("../phone/app.ts", i
 if (!phoneBundle.success) throw new AggregateError(phoneBundle.logs, "phone page failed to build");
 const phoneScript = await phoneBundle.outputs[0].text();
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#14f195" stroke-width="1.75" stroke-linecap="round"><rect width="24" height="24" fill="#000" stroke="none"/><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>`;
-const typed = (body: string | Blob, type: string) => new Response(body, { headers: { "content-type": type } });
+// no-cache: the proxy in front of us would otherwise serve an old phone bundle for hours.
+const typed = (body: string | Blob, type: string) => new Response(body, { headers: { "content-type": type, "cache-control": "no-cache" } });
 const guarded = (work: Promise<unknown>) => work.then((value) => json(value), (error) => json({ error: translate(error).message }, 400));
 
 Bun.serve({
@@ -402,6 +410,7 @@ Bun.serve({
     if (request.method === "POST" && url.pathname === "/v1/approve") return json(await approve((await request.json()) as any));
     if (url.pathname === "/phone") return typed(Bun.file(new URL("../phone/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (url.pathname === "/phone.js") return typed(phoneScript, "text/javascript; charset=utf-8");
+    if (url.pathname === "/thumbprint.apk") return typed(Bun.file(new URL("../site/thumbprint.apk", import.meta.url)), "application/vnd.android.package-archive");
     if (url.pathname === "/icon.svg") return typed(ICON, "image/svg+xml");
     if (url.pathname === "/v1/qr") {
       const target = `${PUBLIC_URL}/phone?session=${encodeURIComponent(url.searchParams.get("session") || "")}`;

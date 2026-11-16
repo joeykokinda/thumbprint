@@ -5,7 +5,7 @@ import { before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { createHash, createPrivateKey, sign } from "node:crypto";
 import type { Thumbprint } from "../target/types/thumbprint";
-import { attestMessage, bindMessage, flagMessage } from "../phone/messages.ts";
+import { approverMessage, attestMessage, bindMessage, flagMessage } from "../phone/messages.ts";
 
 const { Keypair, PublicKey, Ed25519Program } = anchor.web3;
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
@@ -25,6 +25,8 @@ describe("thumbprint", () => {
   const owner = Keypair.fromSecretKey(Uint8Array.from(fixture("owner.json")));
   const sgtMint = new PublicKey("5mXbkqKz883aufhAsx3p5Z1NcvD2ppZbdTTznM6oUKLj");
   const sgtTokenAccount = new PublicKey(fixture("sgt_token_account.json").pubkey);
+  // Stands in for the key the app keeps in the phone's secure hardware, unlocked by a fingerprint.
+  let thumb = Keypair.generate();
   const verifier = Keypair.fromSecretKey(Uint8Array.from(fixture("verifier.json")));
   const handle = "x:tester";
   const text = "hello from a real thumb";
@@ -47,25 +49,25 @@ describe("thumbprint", () => {
   it("binds a handle and records a post the device signed", async () => {
     const bind = (signer: anchor.web3.Keypair) =>
       program.methods
-        .bind(handle)
+        .bind(handle, thumb.publicKey)
         .accounts({ payer: provider.wallet.publicKey, verifier: signer.publicKey, ...accounts })
-        .preInstructions([deviceSignature(owner, bindMessage(handle))])
+        .preInstructions([deviceSignature(owner, bindMessage(handle, thumb.publicKey.toBase58()))])
         .signers([signer])
         .rpc();
     await rejects(bind(Keypair.generate()), "NotVerified"); // the device alone cannot claim a handle
     const impostor = Keypair.generate(); // signs correctly but does not hold the Genesis Token
     await rejects(
       program.methods
-        .bind(handle)
+        .bind(handle, thumb.publicKey)
         .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts, owner: impostor.publicKey })
-        .preInstructions([deviceSignature(impostor, bindMessage(handle))])
+        .preInstructions([deviceSignature(impostor, bindMessage(handle, thumb.publicKey.toBase58()))])
         .signers([verifier])
         .rpc(),
       "NotSeeker",
     );
     await bind(verifier);
 
-    const signature = await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc();
+    const signature = await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, text))]).rpc();
     const [event] = await events(signature);
     assert.equal(event.name, "attested");
     assert.equal(event.data.handle, handle);
@@ -75,7 +77,7 @@ describe("thumbprint", () => {
 
   it("rejects an action with no device signature, or one signed for another account", async () => {
     await rejects(program.methods.attest().accounts(accounts).rpc(), "NotSigned");
-    const wrongHandle = deviceSignature(owner, attestMessage("x:someoneelse", text));
+    const wrongHandle = deviceSignature(thumb, attestMessage("x:someoneelse", text));
     await rejects(program.methods.attest().accounts(accounts).preInstructions([wrongHandle]).rpc(), "WrongMessage");
   });
 
@@ -86,18 +88,30 @@ describe("thumbprint", () => {
   });
 
   it("flags the account as compromised, and refuses a replayed signature", async () => {
-    const report = deviceSignature(owner, flagMessage(handle, true, 0));
+    const report = deviceSignature(thumb, flagMessage(handle, true, 0));
     const [event] = await events(await program.methods.setCompromised(true).accounts(accounts).preInstructions([report]).rpc());
     assert.equal(event.name, "flagged");
     assert.equal(event.data.compromised, true);
     await rejects(program.methods.setCompromised(true).accounts(accounts).preInstructions([report]).rpc(), "WrongMessage");
   });
 
+  it("accepts only the fingerprint key for posts, and lets the wallet move it", async () => {
+    // The wallet key alone (which a PIN can unlock) cannot approve a post.
+    await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc(), "NotSigned");
+    const replacement = Keypair.generate();
+    const move = approverMessage(handle, replacement.publicKey.toBase58(), 1);
+    await rejects(program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(thumb, move)]).rpc(), "NotSigned");
+    await program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(owner, move)]).rpc();
+    await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, "old key"))]).rpc(), "NotSigned");
+    thumb = replacement;
+    await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, "new key"))]).rpc();
+  });
+
   it("rejects a second handle for the same device", async () => {
     const error = await program.methods
-      .bind("x:second")
+      .bind("x:second", thumb.publicKey)
       .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts })
-      .preInstructions([deviceSignature(owner, bindMessage("x:second"))])
+      .preInstructions([deviceSignature(owner, bindMessage("x:second", thumb.publicKey.toBase58()))])
       .signers([verifier])
       .rpc()
       .then(() => null, (thrown) => thrown);

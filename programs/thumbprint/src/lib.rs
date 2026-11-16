@@ -12,7 +12,7 @@ use anchor_spl::token_2022::spl_token_2022::{
 };
 use spl_token_group_interface::state::TokenGroupMember;
 
-declare_id!("BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc");
+declare_id!("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS");
 
 // Seeker Genesis Token group, from docs.solanamobile.com/solana-mobile-stack/seeker-genesis-token
 pub const SGT_GROUP: Pubkey = pubkey!("GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te");
@@ -40,16 +40,21 @@ pub mod thumbprint {
     /// One device, one handle. `handle` is "platform:name", lowercase, e.g. "x:someone".
     // ponytail: one trusted verifier key vouches for control of the social account.
     // Upgrade path: several independent verifiers, or a zkTLS proof of the post checked here.
-    pub fn bind(ctx: Context<Bind>, handle: String) -> Result<()> {
+    ///
+    /// `approver` is the key that will approve posts from now on. In the Thumbprint app it lives
+    /// in the phone's secure hardware and can only be used with a fingerprint, so the wallet
+    /// (which may accept a PIN) is needed just once, here, to prove this is a real Seeker.
+    pub fn bind(ctx: Context<Bind>, handle: String, approver: Pubkey) -> Result<()> {
         require!(is_valid_handle(&handle), ThumbprintError::InvalidHandle);
         let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
-        require!(message == bind_message(&handle).as_bytes(), ThumbprintError::WrongMessage);
+        require!(message == bind_message(&handle, &approver).as_bytes(), ThumbprintError::WrongMessage);
         verify_sgt(
             ctx.accounts.owner.key,
             &ctx.accounts.sgt_token_account,
             &ctx.accounts.sgt_mint,
         )?;
         ctx.accounts.device.owner = ctx.accounts.owner.key();
+        ctx.accounts.device.approver = approver;
         ctx.accounts.device.handle = handle.clone();
         ctx.accounts.handle_claim.sgt_mint = ctx.accounts.sgt_mint.key();
         emit!(Bound {
@@ -63,7 +68,7 @@ pub mod thumbprint {
     /// Records that the device bound to a handle approved one exact post. The device signs the
     /// post text itself, and the hash recorded here is computed from that signed text.
     pub fn attest(ctx: Context<Act>) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
+        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
         let prefix = attest_prefix(&ctx.accounts.device.handle);
         let text = message
             .strip_prefix(prefix.as_bytes())
@@ -87,7 +92,7 @@ pub mod thumbprint {
     /// Works while an attacker holds the social account, because it needs only the device.
     /// The counter in the message stops an old "recovered" signature from being replayed.
     pub fn set_compromised(ctx: Context<Act>, compromised: bool) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
+        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
         let device = &mut ctx.accounts.device;
         require!(
             message == flag_message(&device.handle, compromised, device.flag_count).as_bytes(),
@@ -107,12 +112,34 @@ pub mod thumbprint {
         });
         Ok(())
     }
+
+    /// Moves approval to a new key, signed by the wallet that linked the device. Needed when the
+    /// fingerprint key is lost: Android destroys it if the enrolled fingerprints change.
+    pub fn set_approver(ctx: Context<Act>, approver: Pubkey) -> Result<()> {
+        let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
+        let device = &mut ctx.accounts.device;
+        require!(
+            message == approver_message(&device.handle, &approver, device.flag_count).as_bytes(),
+            ThumbprintError::WrongMessage
+        );
+        verify_sgt(
+            ctx.accounts.owner.key,
+            &ctx.accounts.sgt_token_account,
+            &ctx.accounts.sgt_mint,
+        )?;
+        device.approver = approver;
+        device.flag_count += 1;
+        Ok(())
+    }
 }
 
 // The wallet shows these to the owner, so they are written to be read. The phone page builds
 // the same strings; tests/thumbprint.ts pins them.
-pub fn bind_message(handle: &str) -> String {
-    format!("Thumbprint: link {handle} to this Seeker")
+pub fn bind_message(handle: &str, approver: &Pubkey) -> String {
+    format!("Thumbprint: link {handle} to this Seeker\nPosts are approved by key {approver}")
+}
+pub fn approver_message(handle: &str, approver: &Pubkey, count: u64) -> String {
+    format!("Thumbprint: {handle} posts are now approved by key {approver} (#{count})")
 }
 pub fn attest_prefix(handle: &str) -> String {
     format!("Thumbprint: approve this post as {handle}\n\n")
@@ -255,6 +282,9 @@ pub struct Act<'info> {
 pub struct Device {
     /// The wallet that linked this device. Every later action must be signed by it.
     pub owner: Pubkey,
+    /// The key that approves posts and the kill switch. Equal to `owner` when no separate
+    /// fingerprint key is used.
+    pub approver: Pubkey,
     #[max_len(MAX_HANDLE_LEN)]
     pub handle: String,
     pub flag_count: u64,

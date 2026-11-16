@@ -19,9 +19,9 @@ const expect = (label: string, condition: unknown, detail?: unknown) => {
 
 const handle = "x:smoke_" + owner.slice(0, 8).toLowerCase();
 const text = "smoke test post";
-const stolen = await act({ kind: "bind", handle, proof: "https://x.com/jack/status/20" }, bindMessage(handle));
+const stolen = await act({ kind: "bind", handle, proof: "https://x.com/jack/status/20" }, bindMessage(handle, owner));
 expect("a post without the device's code does not link a handle", stolen.error, stolen);
-const bound = await act({ kind: "bind", handle }, bindMessage(handle));
+const bound = await act({ kind: "bind", handle }, bindMessage(handle, owner));
 expect("links a handle", bound.ok, bound);
 const attested = await act({ kind: "attest" }, attestMessage(handle, text));
 expect("records an approval", attested.ok, attested);

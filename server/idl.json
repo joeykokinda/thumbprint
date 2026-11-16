@@ -1,5 +1,5 @@
 {
-  "address": "BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc",
+  "address": "EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS",
   "metadata": {
     "name": "thumbprint",
     "version": "0.1.0",
@@ -69,7 +69,11 @@
     {
       "name": "bind",
       "docs": [
-        "One device, one handle. `handle` is \"platform:name\", lowercase, e.g. \"x:someone\"."
+        "One device, one handle. `handle` is \"platform:name\", lowercase, e.g. \"x:someone\".",
+        "",
+        "`approver` is the key that will approve posts from now on. In the Thumbprint app it lives",
+        "in the phone's secure hardware and can only be used with a fingerprint, so the wallet",
+        "(which may accept a PIN) is needed just once, here, to prove this is a real Seeker."
       ],
       "discriminator": [
         178,
@@ -160,6 +164,74 @@
         {
           "name": "handle",
           "type": "string"
+        },
+        {
+          "name": "approver",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_approver",
+      "docs": [
+        "Moves approval to a new key, signed by the wallet that linked the device. Needed when the",
+        "fingerprint key is lost: Android destroys it if the enrolled fingerprints change."
+      ],
+      "discriminator": [
+        139,
+        202,
+        200,
+        122,
+        109,
+        173,
+        219,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "approver",
+          "type": "pubkey"
         }
       ]
     },
@@ -393,6 +465,14 @@
             "name": "owner",
             "docs": [
               "The wallet that linked this device. Every later action must be signed by it."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "approver",
+            "docs": [
+              "The key that approves posts and the kill switch. Equal to `owner` when no separate",
+              "fingerprint key is used."
             ],
             "type": "pubkey"
           },
