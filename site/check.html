@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check an address · Thumbprint</title>
+<link rel="icon" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Host+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f5f4ef; --ink: #141412; --muted: #66655f; --line: #d6d4ca; --accent: #0a8a5c; --alert: #d23f1c; --sans: "Host Grotesk", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 18px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 24px 96px; }
+  a { color: inherit; }
+  .label { font: 500 12px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px dashed var(--line); }
+  header a { text-decoration: none; }
+  header b { font-size: 20px; letter-spacing: -0.03em; text-transform: uppercase; }
+  h1 { margin: 56px 0 14px; font-size: clamp(36px, 7vw, 56px); line-height: 1; font-weight: 700; letter-spacing: -0.04em; text-transform: uppercase; }
+  .lede { margin: 0 0 32px; color: var(--muted); max-width: 52ch; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; height: 56px; padding: 0 16px; border: 1px solid var(--line); border-radius: 4px; background: #fbfaf6; color: var(--ink); font: 500 14px var(--mono); outline: 0; }
+  input:focus { border-color: var(--ink); }
+  button { height: 56px; padding: 0 24px; border: 0; border-radius: 4px; background: var(--ink); color: #fff; font: 600 13px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+  #result { margin-top: 32px; }
+  .verdict { padding: 28px; border: 1px solid var(--line); border-left: 4px solid var(--muted); background: #fbfaf6; }
+  .verdict.good { border-left-color: var(--accent); }
+  .verdict.bad { border-left-color: var(--alert); }
+  .verdict h2 { margin: 10px 0 8px; font-size: 30px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
+  .verdict.good h2 { color: var(--accent); }
+  .verdict.bad h2 { color: var(--alert); }
+  .verdict p { margin: 0; color: var(--muted); }
+  dl { margin: 24px 0 0; border-top: 1px dashed var(--line); }
+  dl div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  dt { flex: none; font: 500 12px/1.9 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  dd { margin: 0; text-align: right; font: 500 13px/1.7 var(--mono); overflow-wrap: anywhere; }
+  dd.good { color: var(--accent); }
+  dd.bad { color: var(--alert); }
+  .how { margin-top: 40px; font-size: 16px; color: var(--muted); }
+  .how b { color: var(--ink); font-weight: 600; }
+  .live { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--accent); animation: live 1.6s ease-in-out infinite; }
+  @keyframes live { 50% { opacity: 0.25; } }
+  @media (max-width: 560px) { form { flex-direction: column; } dl div { flex-direction: column; gap: 0; } dd { text-align: left; } }
+  @media (prefers-reduced-motion: reduce) { .live { animation: none; } }
+</style>
+<main>
+  <header><a href="/"><b>Thumbprint</b></a><span class="label">Read straight from Solana</span></header>
+  <h1>Check before you buy.</h1>
+  <p class="lede">Paste a token or contract address. This page asks Solana whether an account's owner approved it with their fingerprint, and whether that account has since been reported as hacked.</p>
+  <form id="form"><input id="address" placeholder="Solana address" autocomplete="off" spellcheck="false" aria-label="Solana address"><button>Check</button></form>
+  <div id="result" aria-live="polite"></div>
+  <p class="how"><b>No Thumbprint server is involved.</b> Your browser reads the records from a public Solana node, then runs the same check a wallet or another program can put in front of a swap: if the answer is no, the whole transaction fails.</p>
+</main>
+<script type="module">
+  // Everything here comes from a public RPC node, so it works with the Thumbprint server off.
+  import { Connection, PublicKey, Transaction, TransactionInstruction } from "https://esm.sh/@solana/web3.js@1.98.4";
+  const PROGRAM = new PublicKey("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS");
+  const PAYER = new PublicKey("5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z"); // any funded account works for a dry run
+  const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+  const encoder = new TextEncoder();
+  const explorer = (address) => `https://explorer.solana.com/address/${address}?cluster=devnet`;
+  const pda = (...seeds) => PublicKey.findProgramAddressSync(seeds, PROGRAM)[0];
+  const result = document.getElementById("result");
+  const input = document.getElementById("address");
+
+  // Endorsement account: 8 tag, 32 address, 32 post hash, 8 time, then the handle.
+  async function approvals(address) {
+    const accounts = await connection.getProgramAccounts(PROGRAM, { filters: [{ memcmp: { offset: 8, bytes: address.toBase58() } }] });
+    return accounts.map(({ pubkey, account }) => {
+      const view = new DataView(account.data.buffer, account.data.byteOffset);
+      return { record: pubkey, time: Number(view.getBigInt64(72, true)), handle: new TextDecoder().decode(account.data.subarray(84, 84 + view.getUint32(80, true))) };
+    });
+  }
+
+  // The dry run of `check`: exactly what a wallet would put in front of the swap.
+  async function dryRun(handle, address) {
+    const tag = new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode("global:check"))).subarray(0, 8);
+    const name = encoder.encode(handle);
+    const data = new Uint8Array(8 + 4 + name.length + 32);
+    data.set(tag);
+    new DataView(data.buffer).setUint32(8, name.length, true);
+    data.set(name, 12);
+    data.set(address.toBytes(), 12 + name.length);
+    const instruction = new TransactionInstruction({
+      programId: PROGRAM,
+      data,
+      keys: [pda(encoder.encode("address"), name, address.toBytes()), pda(encoder.encode("status"), name)].map((pubkey) => ({ pubkey, isSigner: false, isWritable: false })),
+    });
+    const transaction = new Transaction({ feePayer: PAYER, recentBlockhash: (await connection.getLatestBlockhash()).blockhash }).add(instruction);
+    const { value } = await connection.simulateTransaction(transaction); // legacy form: no signatures are checked
+    const reason = (value.logs || []).join(" ").match(/Error Code: (\w+)/)?.[1];
+    return { ok: !value.err, reason };
+  }
+
+  const row = (label, value, tone = "") => `<div><dt>${label}</dt><dd class="${tone}">${value}</dd></div>`;
+  async function check() {
+    let address;
+    try { address = new PublicKey(input.value.trim()); } catch { return (result.innerHTML = ""); }
+    const found = await approvals(address);
+    if (address.toBase58() !== input.value.trim()) return;
+    if (!found.length) {
+      result.innerHTML = `<div class="verdict"><span class="label">No record</span><h2>Nobody's phone approved this address</h2><p>No account that signs with Thumbprint has approved it. If a post from one of them told you to buy it, that post was not made by the owner.</p></div>`;
+      return;
+    }
+    const blocks = await Promise.all(found.map(async (entry) => {
+      const run = await dryRun(entry.handle, address);
+      const name = "@" + entry.handle.slice(2);
+      const hacked = run.reason === "ReportedCompromised";
+      return `<div class="verdict ${run.ok ? "good" : "bad"}">
+        <span class="label">${run.ok ? "Approved by fingerprint" : "Blocked"}</span>
+        <h2>${run.ok ? `Official address of ${name}` : hacked ? `${name} is reported hacked` : "Check failed"}</h2>
+        <p>${run.ok ? `The owner of ${name} approved a post naming this address, with their fingerprint, on their own Seeker.` : hacked ? `The owner approved this address earlier, but has since reported the account as taken over. Do not trust anything posted from it right now.` : "The record could not be confirmed."}</p>
+        <dl>
+          ${row("Approved", new Date(entry.time * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }))}
+          ${row("Record on Solana", `<a href="${explorer(entry.record.toBase58())}" target="_blank" rel="noopener">${entry.record.toBase58().slice(0, 8)}… ↗</a>`)}
+          ${row("A swap with this check", run.ok ? "would go through" : `fails onchain: ${run.reason || "error"}`, run.ok ? "good" : "bad")}
+        </dl>
+      </div>`;
+    }));
+    if (address.toBase58() === input.value.trim()) result.innerHTML = blocks.join("") + `<p class="label" style="margin-top:16px"><i class="live"></i>Rechecking every few seconds</p>`;
+  }
+
+  document.getElementById("form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    history.replaceState(null, "", "?address=" + encodeURIComponent(input.value.trim()));
+    result.innerHTML = `<p class="label">Asking Solana…</p>`;
+    check().catch((error) => (result.innerHTML = `<p class="label">Solana did not answer: ${String(error.message || error).slice(0, 120)}</p>`));
+  });
+  input.value = new URLSearchParams(location.search).get("address") || "";
+  if (input.value) check().catch(() => {});
+  // The kill switch can be used at any moment, so keep looking.
+  setInterval(() => document.visibilityState === "visible" && input.value && check().catch(() => {}), 4000);
+</script>
+</html>

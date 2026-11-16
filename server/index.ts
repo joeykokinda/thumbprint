@@ -69,7 +69,7 @@ function endorsements(address: string) {
     address,
     handle: row.handle,
     timestamp: row.timestamp,
-    recordUrl: `https://explorer.solana.com/address/${endorsementAddress(row.handle, new anchor.web3.PublicKey(address)).toBase58()}?cluster=devnet`,
+    recordUrl: `${PUBLIC_URL}/check?address=${address}`, // reads the account from Solana in the reader's browser
   }));
 }
 
@@ -287,7 +287,7 @@ async function act(body: { kind: string; owner: string; handle?: string; approve
       : body.kind === "approver"
         ? program.methods.setApprover(new anchor.web3.PublicKey(String(body.approver))).accounts(accounts)
         : body.kind === "flag"
-        ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
+        ? program.methods.setCompromised(Boolean(body.compromised)).accounts({ payer: payer.publicKey, ...accounts })
         : program.methods.attest().accounts(accounts);
   let method = plain;
   if (body.kind === "attest") {
@@ -459,6 +459,7 @@ Bun.serve({
     }
     if (X_CONSUMER_KEY && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
     if (X_CONSUMER_KEY && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("oauth_token") || "", url.searchParams.get("oauth_verifier") || "", url.searchParams.get("denied") || "");
+    if (url.pathname === "/check") return typed(Bun.file(new URL("../site/check.html", import.meta.url)), "text/html; charset=utf-8");
     if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
     if (url.pathname.startsWith("/v1/address/")) return json(endorsements(url.pathname.slice(12)));

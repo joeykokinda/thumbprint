@@ -137,7 +137,7 @@ pub mod thumbprint {
     /// Kill switch: the device owner marks the handle as compromised (or clears it).
     /// Works while an attacker holds the social account, because it needs only the device.
     /// The counter in the message stops an old "recovered" signature from being replayed.
-    pub fn set_compromised(ctx: Context<Act>, compromised: bool) -> Result<()> {
+    pub fn set_compromised(ctx: Context<Flag>, compromised: bool) -> Result<()> {
         let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
         let device = &mut ctx.accounts.device;
         require!(
@@ -150,12 +150,27 @@ pub mod thumbprint {
             &ctx.accounts.sgt_mint,
         )?;
         device.flag_count += 1;
+        ctx.accounts.status.compromised = compromised;
         emit!(Flagged {
             handle: device.handle.clone(),
             compromised,
             owner: ctx.accounts.owner.key(),
             sgt_mint: ctx.accounts.sgt_mint.key(),
         });
+        Ok(())
+    }
+
+    /// For anyone else's transaction: fails unless the handle's phone approved this address and
+    /// the owner has not reported the account as taken over. Put it in front of a swap, a claim
+    /// or a mint and the whole transaction reverts when the answer is no. Programs can instead
+    /// take the same two accounts in their own constraints.
+    pub fn check(ctx: Context<Check>, _handle: String, _address: Pubkey) -> Result<()> {
+        let ours = |account: &UncheckedAccount| *account.owner == crate::ID && !account.data_is_empty();
+        require!(ours(&ctx.accounts.endorsement), ThumbprintError::NeverApproved);
+        if ours(&ctx.accounts.status) {
+            let status = Status::try_deserialize(&mut &ctx.accounts.status.try_borrow_data()?[..])?;
+            require!(!status.compromised, ThumbprintError::ReportedCompromised);
+        }
         Ok(())
     }
 
@@ -350,16 +365,62 @@ pub struct Endorse<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct Flag<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: proven by the Ed25519 instruction, see signed_message
+    pub owner: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_token_account: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_mint: UncheckedAccount<'info>,
+    #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
+    pub device: Account<'info, Device>,
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + Status::INIT_SPACE,
+        seeds = [b"status", device.handle.as_bytes()],
+        bump
+    )]
+    pub status: Account<'info, Status>,
+    /// CHECK: the instructions sysvar
+    #[account(address = INSTRUCTIONS_ID)]
+    pub instructions: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(handle: String, address: Pubkey)]
+pub struct Check<'info> {
+    /// CHECK: existence is the answer; read in check
+    #[account(seeds = [b"address", handle.as_bytes(), address.as_ref()], bump)]
+    pub endorsement: UncheckedAccount<'info>,
+    /// CHECK: absent until the first report; read in check
+    #[account(seeds = [b"status", handle.as_bytes()], bump)]
+    pub status: UncheckedAccount<'info>,
+}
+
 /// Exists only if the handle's phone approved a post naming this address.
-/// Address: seeds ["address", handle, address] under this program.
+/// Address: seeds ["address", handle, address] under this program. `address` comes first so
+/// "who approved this address?" is one fixed-offset filter over the program's accounts.
 #[account]
 #[derive(InitSpace)]
 pub struct Endorsement {
-    #[max_len(MAX_HANDLE_LEN)]
-    pub handle: String,
     pub address: Pubkey,
     pub text_hash: [u8; 32],
     pub timestamp: i64,
+    #[max_len(MAX_HANDLE_LEN)]
+    pub handle: String,
+}
+
+/// Whether the owner has reported the handle as taken over. Seeds ["status", handle], so any
+/// program that knows the handle can read it. Absent means never reported.
+#[account]
+#[derive(InitSpace)]
+pub struct Status {
+    pub compromised: bool,
 }
 
 #[account]
@@ -429,6 +490,10 @@ pub enum ThumbprintError {
     NotOwner,
     #[msg("The approved post does not contain this address")]
     AddressNotInPost,
+    #[msg("This account's phone never approved this address")]
+    NeverApproved,
+    #[msg("The owner reported this account as taken over")]
+    ReportedCompromised,
 }
 
 #[cfg(test)]

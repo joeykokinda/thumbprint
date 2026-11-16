@@ -172,6 +172,86 @@
       ]
     },
     {
+      "name": "check",
+      "docs": [
+        "For anyone else's transaction: fails unless the handle's phone approved this address and",
+        "the owner has not reported the account as taken over. Put it in front of a swap, a claim",
+        "or a mint and the whole transaction reverts when the answer is no. Programs can instead",
+        "take the same two accounts in their own constraints."
+      ],
+      "discriminator": [
+        238,
+        251,
+        184,
+        43,
+        83,
+        233,
+        244,
+        65
+      ],
+      "accounts": [
+        {
+          "name": "endorsement",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  100,
+                  114,
+                  101,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "handle"
+              },
+              {
+                "kind": "arg",
+                "path": "address"
+              }
+            ]
+          }
+        },
+        {
+          "name": "status",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "handle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_handle",
+          "type": "string"
+        },
+        {
+          "name": "_address",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "endorse",
       "docs": [
         "The same approval as `attest`, for a post that names a Solana address (a token mint, a",
@@ -357,6 +437,11 @@
       ],
       "accounts": [
         {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "owner",
           "relations": [
             "device"
@@ -392,8 +477,36 @@
           }
         },
         {
+          "name": "status",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  116,
+                  117,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device.handle",
+                "account": "Device"
+              }
+            ]
+          }
+        },
+        {
           "name": "instructions",
           "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -442,6 +555,19 @@
         234,
         115,
         190
+      ]
+    },
+    {
+      "name": "Status",
+      "discriminator": [
+        153,
+        76,
+        72,
+        41,
+        117,
+        104,
+        170,
+        58
       ]
     }
   ],
@@ -534,6 +660,16 @@
       "code": 6006,
       "name": "AddressNotInPost",
       "msg": "The approved post does not contain this address"
+    },
+    {
+      "code": 6007,
+      "name": "NeverApproved",
+      "msg": "This account's phone never approved this address"
+    },
+    {
+      "code": 6008,
+      "name": "ReportedCompromised",
+      "msg": "The owner reported this account as taken over"
     }
   ],
   "types": [
@@ -649,15 +785,12 @@
       "name": "Endorsement",
       "docs": [
         "Exists only if the handle's phone approved a post naming this address.",
-        "Address: seeds [\"address\", handle, address] under this program."
+        "Address: seeds [\"address\", handle, address] under this program. `address` comes first so",
+        "\"who approved this address?\" is one fixed-offset filter over the program's accounts."
       ],
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "handle",
-            "type": "string"
-          },
           {
             "name": "address",
             "type": "pubkey"
@@ -674,6 +807,10 @@
           {
             "name": "timestamp",
             "type": "i64"
+          },
+          {
+            "name": "handle",
+            "type": "string"
           }
         ]
       }
@@ -710,6 +847,22 @@
           {
             "name": "sgt_mint",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Status",
+      "docs": [
+        "Whether the owner has reported the handle as taken over. Seeds [\"status\", handle], so any",
+        "program that knows the handle can read it. Absent means never reported."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "compromised",
+            "type": "bool"
           }
         ]
       }

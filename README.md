@@ -23,7 +23,8 @@ The extension talks to the live server out of the box, so loading it is enough t
 - **Official addresses.** When an approved post names a Solana address (a token mint, a
   contract), the program records it in an account at a known address. The extension marks that
   address green in anyone's post, and warns when the same account posts a different one unsigned.
-  A wallet or another program can make the same check with no server involved.
+  A wallet or another program can make the same check with no server involved, and
+  [thumbprint.pyras.org/check](https://thumbprint.pyras.org/check) does exactly that from the browser.
 - **Warn.** A post with no approval, from an account that signs, is marked "Not signed". If it
   carries links they are blocked until the reader chooses to open them.
 - **Kill switch.** One tap on the Seeker marks the account compromised for every reader, even
@@ -53,7 +54,7 @@ this handle. It does not say who wrote the text or whether it is true.
 
 | Part | Path | Role |
 | --- | --- | --- |
-| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `endorse`, `set_compromised`, `set_approver` |
+| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `endorse`, `check`, `set_compromised`, `set_approver` |
 | Server | `server/` | Bun: pairing relay, fee payer, indexer, lookup API, proof pages |
 | Phone page | `phone/` | The app's screen; in Chrome it does the one wallet step through Mobile Wallet Adapter |
 | App | `android/` | Android app: the phone page plus a fingerprint-only Ed25519 key in secure hardware |
@@ -96,7 +97,13 @@ Program ID (devnet): `EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS`
   record an address the owner did not approve. `GET /v1/address/<address>` is the same lookup
   over HTTP.
 - **Kill switch.** `set_compromised` signs a message with a counter stored on the device
-  account, so a captured signature cannot be replayed.
+  account, so a captured signature cannot be replayed. The result is stored in a `Status`
+  account at seeds `["status", handle]`.
+- **A check anyone's transaction can carry.** `check(handle, address)` fails with
+  `NeverApproved` or `ReportedCompromised` unless the handle's phone approved that address and
+  the account is not reported as taken over. Put in front of a swap, claim or mint, it reverts
+  the whole transaction; a program can instead take the two accounts in its own constraints.
+  `site/check.html` runs it as a dry run against a public RPC node, with no Thumbprint server.
 
 ## QuickNode Stream
 
@@ -180,6 +187,8 @@ Genesis Token mint cloned from mainnet.
 - One trusted verifier vouches for handle control, and it reads X's public embed endpoint.
 - Links are bound by domain, not full path, because X rewrites them.
 - Someone who holds the phone and knows the wallet PIN can move approval to a key of their own.
+- The kill switch is also a lever: whoever can use it can make checked transactions fail.
+- One address is recorded per post, there is no way to withdraw one, and no wallet reads these records yet.
 - The extension depends on X's page structure.
 - A post longer than one transaction can carry (about 600 bytes) cannot be approved yet.
 - Posts cut off by "Show more" get no mark in the timeline.

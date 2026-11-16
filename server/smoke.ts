@@ -37,6 +37,16 @@ const announced = await act({ kind: "attest" }, attestMessage(handle, `Our only 
 expect("approves a post that names an address", announced.ok, announced);
 const [quoted] = (await (await fetch(`${SERVER}/v1/lookup`, { method: "POST", body: JSON.stringify([{ handle: "x:someone_else", hash: "", addresses: [mint] }]) })).json()) as any[];
 expect("anyone's post naming that address shows who approved it", quoted.addresses?.[0]?.handle === handle, quoted);
-const record = quoted.addresses?.[0]?.recordUrl.match(/address\/(\w+)/)?.[1];
+const record = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), new anchor.web3.PublicKey(mint).toBuffer()], new anchor.web3.PublicKey("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS"))[0].toBase58();
 const onchain = record && (await new anchor.web3.Connection("https://api.devnet.solana.com").getAccountInfo(new anchor.web3.PublicKey(record)));
 expect("the record is an account on Solana", onchain, record);
+
+// The kill switch is stored onchain, where the check any transaction can carry reads it.
+console.log(`     check page: ${SERVER}/check?address=${mint}`);
+await Bun.sleep(Number(process.env.PAUSE || 0) * 1000); // time to watch the page flip
+const { flagMessage } = await import("../phone/messages.ts");
+const flagged = await act({ kind: "flag", compromised: true }, flagMessage(handle, true, 0));
+expect("reports the account as taken over", flagged.ok, flagged);
+const status = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("status"), Buffer.from(handle)], new anchor.web3.PublicKey("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS"))[0];
+const stored = await new anchor.web3.Connection("https://api.devnet.solana.com", "confirmed").getAccountInfo(status);
+expect("the report is stored on Solana", stored?.data[8] === 1, status.toBase58());

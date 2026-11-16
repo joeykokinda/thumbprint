@@ -85,6 +85,20 @@ describe("thumbprint", () => {
     assert.deepEqual(names, ["attested", "endorsed"]);
     const [record] = PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), mint.toBuffer()], program.programId);
     assert.equal((await program.account.endorsement.fetch(record)).address.toBase58(), mint.toBase58());
+    // Anyone's transaction can carry the check. It passes for the approved address only, and
+    // stops passing the moment the owner reports the account as taken over.
+    const [status] = PublicKey.findProgramAddressSync([Buffer.from("status"), Buffer.from(handle)], program.programId);
+    const check = (address: PublicKey) =>
+      program.methods.check(handle, address).accounts({ endorsement: PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), address.toBuffer()], program.programId)[0], status }).rpc();
+    await check(mint);
+    await rejects(check(Keypair.generate().publicKey), "NeverApproved");
+    const count = 0; // each report or key move uses the next number
+    const flag = (compromised: boolean, at: number) =>
+      program.methods.setCompromised(compromised).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([deviceSignature(thumb, flagMessage(handle, compromised, at))]).rpc();
+    await flag(true, count);
+    await rejects(check(mint), "ReportedCompromised");
+    await flag(false, count + 1);
+    await check(mint);
   });
 
   it("rejects an action with no device signature, or one signed for another account", async () => {
@@ -100,18 +114,18 @@ describe("thumbprint", () => {
   });
 
   it("flags the account as compromised, and refuses a replayed signature", async () => {
-    const report = deviceSignature(thumb, flagMessage(handle, true, 0));
-    const [event] = await events(await program.methods.setCompromised(true).accounts(accounts).preInstructions([report]).rpc());
+    const report = deviceSignature(thumb, flagMessage(handle, true, 2));
+    const [event] = await events(await program.methods.setCompromised(true).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([report]).rpc());
     assert.equal(event.name, "flagged");
     assert.equal(event.data.compromised, true);
-    await rejects(program.methods.setCompromised(true).accounts(accounts).preInstructions([report]).rpc(), "WrongMessage");
+    await rejects(program.methods.setCompromised(true).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([report]).rpc(), "WrongMessage");
   });
 
   it("accepts only the fingerprint key for posts, and lets the wallet move it", async () => {
     // The wallet key alone (which a PIN can unlock) cannot approve a post.
     await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc(), "NotSigned");
     const replacement = Keypair.generate();
-    const move = approverMessage(handle, replacement.publicKey.toBase58(), 1);
+    const move = approverMessage(handle, replacement.publicKey.toBase58(), 3);
     await rejects(program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(thumb, move)]).rpc(), "NotSigned");
     await program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(owner, move)]).rpc();
     await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, "old key"))]).rpc(), "NotSigned");
