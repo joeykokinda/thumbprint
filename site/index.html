@@ -607,7 +607,7 @@
       root.append(list);
       let real;
       loop([
-        [() => { real = post(POSTS.launch); real.querySelector(".xaddress").classList.add("off"); list.replaceChildren(real, post(POSTS.rule)); }, 1600],
+        [() => { real = post(POSTS.launch); real.querySelector(".xaddress").classList.add("off"); list.replaceChildren(real, post(POSTS.bag)); }, 1600],
         [() => real.querySelector(".xaddress").classList.remove("off"), 3200, true],
         [() => { const fake = post(POSTS.fakeMint); fake.classList.add("drop"); list.prepend(fake); }, 4600],
       ]);
