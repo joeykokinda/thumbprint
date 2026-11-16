@@ -221,6 +221,15 @@
   .x[data-mock="signed"] { height: 340px; }
   .x[data-mock="hijacked"] { height: 440px; }
   .x[data-mock="banner"] { height: 450px; }
+  .x[data-mock="address"] { height: 460px; }
+  .xtext code { font: 500 12px/1.5 var(--mono); overflow-wrap: anywhere; color: #0f1419; }
+  .xtext code.bad { color: #d91f2a; text-decoration: line-through; }
+  .xaddress { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin: 8px 0 4px; padding: 8px 12px; border: 1px solid #bfe3d4; border-left: 3px solid #00875a; border-radius: 4px 12px 12px 4px; font-size: 13px; line-height: 18px; color: #0f1419; transition: opacity 300ms, transform 300ms; }
+  .xaddress.off { opacity: 0; transform: translateY(-6px); }
+  .xaddress code { font: 500 12px/1 var(--mono); }
+  .xaddress a { color: #00875a; font-weight: 700; }
+  .xaddress small { flex-basis: 100%; color: #536471; font-size: 13px; }
+  .xaddress .xmark { color: #00875a; }
   .step:nth-child(even) { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
   .step:nth-child(even) > :first-child { order: 2; }
   .pointer { position: absolute; left: 0; top: 0; z-index: 3; width: 22px; height: 22px; pointer-events: none; transition: transform 850ms cubic-bezier(0.3, 0.7, 0.2, 1); filter: drop-shadow(0 2px 3px rgba(15, 20, 25, 0.3)); }
@@ -413,12 +422,16 @@
         <div><span class="label"><span class="num">03</span>Read</span><h3>Followers see the mark</h3><p>Approved posts carry a fingerprint next to the name, the same size as the verified check. The card shows when it was approved, on which device, and links to the record on Solana.</p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="signed"></div></figure>
       </div>
+      <div class="step reveal">
+        <div><span class="label"><span class="num">04</span>Addresses</span><h3>The real token address, and only the real one</h3><p>When an approved post names a Solana address, that address is recorded on Solana as official for the account. Readers see it marked green in anyone's post. A different address from the same account gets a red warning, and any wallet can run the same check before you buy.</p></div>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="address"></div></figure>
+      </div>
       <div class="step alert reveal">
-        <div><span class="label"><span class="num">04</span>Hijacked</span><h3>A post without the phone stands out</h3><p>If an account that signs its posts publishes one that is not approved, it is flagged in red and any links in it are blocked until the reader chooses to open them.</p></div>
+        <div><span class="label"><span class="num">05</span>Hijacked</span><h3>A post without the phone stands out</h3><p>If an account that signs its posts publishes one that is not approved, it is flagged in red and any links in it are blocked until the reader chooses to open them.</p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="hijacked"></div></figure>
       </div>
       <div class="step alert reveal">
-        <div><span class="label"><span class="num">05</span>Kill switch</span><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session.</p></div>
+        <div><span class="label"><span class="num">06</span>Kill switch</span><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session.</p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="banner"></div></figure>
       </div>
     </div>
@@ -441,7 +454,7 @@
     <div class="why-grid">
       <div class="reveal"><span class="why-num">01</span><h3>It can't be faked</h3><p>Your phone signs the exact words of your post. Solana checks that signature before it records anything. Change one letter and it no longer matches.</p></div>
       <div class="reveal"><span class="why-num">02</span><h3>One phone, one account</h3><p>Every Seeker is born with a one-of-a-kind token. Your account is tied to your phone and nobody else's, so there can't be a second "you".</p></div>
-      <div class="reveal"><span class="why-num">03</span><h3>Anyone can check</h3><p>Each green mark links to its public record. No login, no asking us. If we disappeared tomorrow, the proof would still be there.</p></div>
+      <div class="reveal"><span class="why-num">03</span><h3>Wallets can check too</h3><p>Every record is public. Before you buy, any wallet or app can ask Solana "did this account's phone approve this address?" No login, no asking us.</p></div>
     </div>
     <a class="why-foot pad label" href="https://explorer.solana.com/address/EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS?cluster=devnet" target="_blank" rel="noopener"><span>See the program on Solana</span><b>EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS ↗</b></a>
   </div>
@@ -473,6 +486,8 @@
     bag: { time: "now", stats: ["12", "41", "386", "9.2K"], text: "Not selling. Added to my SOL bag this morning. Same thesis as last cycle.", signed: true },
     rule: { time: "2h", stats: ["214", "1.8K", "6.4K", "412K"], text: "Reminder: I will never DM you first, and I do not have a token. If a post has no green mark, it is not me.", signed: true },
     call: { time: "5h", stats: ["97", "305", "2.9K", "188K"], text: "Rotated out of memes into majors. Thread tomorrow on why.", signed: true },
+    launch: { time: "1h", stats: ["388", "2.4K", "9.1K", "640K"], text: "$MAREN is live. The only address:", address: "MRNx4kQ9vTz2hW8LpYc6sBf3uJd7aNe5gRt1oZiXyPqV", signed: true },
+    fakeMint: { time: "now", stats: ["5", "31", "88", "3.4K"], text: "New $MAREN contract, old one is paused. Buy here:", address: "MRNx9fPz3LkW7cTb2Qy8HsVd5uJa4Ne6gRt1oZiXpump", signed: false },
     drainer: { time: "now", stats: ["3", "19", "54", "2.1K"], text: "It's finally here. $MAREN presale is live for 1 hour. Send SOL to get in early:", link: "maren-presale.xyz", signed: false },
   };
   // X's row under a post: reply, repost, like, views, bookmark, share.
@@ -501,12 +516,20 @@
       line.append(el("strong", "", options.flagged ? "Account compromised" : "No fingerprint on this post"), el("span", "", options.flagged ? `The owner of ${HANDLE} reported this account as taken over. This post was not approved on their device.` : `${HANDLE} approves every post with a fingerprint on their own phone. This one has none, so it may not be from them.`));
       const gate = el("div", "xnote-gate");
       gate.append(el("span", "", options.flagged ? "Links in this post are blocked." : "Links are blocked. This is how wallet drainers are posted from hacked accounts."), el("u", "", "Unblock links"));
+      if (item.address) gate.replaceChildren(el("span", "", `${HANDLE}'s phone never approved the address in this post. Do not buy it or send funds to it.`));
       note.append(line, gate);
       body.append(note);
     }
     const text = el("div", "xtext", item.text + " ");
     if (item.link) text.append(el("s", "", item.link));
+    if (item.address) text.append(el("code", item.signed ? "" : "bad", item.address));
     body.append(text);
+    if (item.address && item.signed) {
+      // Same words as extension/content.js markAddresses.
+      const row = el("div", "xaddress");
+      row.innerHTML = "<span class='xmark'>" + PRINT + "</span><b>Official address</b><code>" + item.address.slice(0, 4) + "…" + item.address.slice(-4) + "</code><a>Check onchain ↗</a><small>approved by fingerprint, recorded on Solana</small>";
+      body.append(row);
+    }
     if (options.card) {
       const card = el("div", "xcard");
       card.innerHTML = "<b><span class='xmark'>" + PRINT + "</span>Signed with fingerprint</b><p>The account owner approved this exact post on their Seeker.</p><dl><div><dt>Approved</dt><dd>Today, 9:41 AM</dd></div><div><dt>Device</dt><dd>Seeker · CVh4…Sj8r</dd></div><div><dt>Last 24h</dt><dd>3 posts approved</dd></div></dl><a>View proof ↗</a>";
@@ -576,6 +599,17 @@
         [() => { fake = post(POSTS.drainer); fake.classList.add("drop"); list.prepend(fake); }, 2600, true],
         [() => arrow.to(fake.querySelector("s"), 40, 8), 1100],
         [() => fake.querySelector("s").classList.add("deny"), 2800],
+      ]);
+    },
+    // 04: the real address gets its green row, then a fake one shows up and is called out.
+    address(root) {
+      const list = el("div");
+      root.append(list);
+      let real;
+      loop([
+        [() => { real = post(POSTS.launch); real.querySelector(".xaddress").classList.add("off"); list.replaceChildren(real, post(POSTS.rule)); }, 1600],
+        [() => real.querySelector(".xaddress").classList.remove("off"), 3200, true],
+        [() => { const fake = post(POSTS.fakeMint); fake.classList.add("drop"); list.prepend(fake); }, 4600],
       ]);
     },
     // 05: the owner's report arrives on the profile.

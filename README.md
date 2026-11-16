@@ -20,6 +20,10 @@ The extension talks to the live server out of the box, so loading it is enough t
   owner approves with a fingerprint, the approval lands on Solana, and the extension presses Post.
 - **Read.** Approved posts get a fingerprint mark next to the author's name. Hovering shows when
   and on which device, with a link to a public proof page.
+- **Official addresses.** When an approved post names a Solana address (a token mint, a
+  contract), the program records it in an account at a known address. The extension marks that
+  address green in anyone's post, and warns when the same account posts a different one unsigned.
+  A wallet or another program can make the same check with no server involved.
 - **Warn.** A post with no approval, from an account that signs, is marked "Not signed". If it
   carries links they are blocked until the reader chooses to open them.
 - **Kill switch.** One tap on the Seeker marks the account compromised for every reader, even
@@ -49,7 +53,7 @@ this handle. It does not say who wrote the text or whether it is true.
 
 | Part | Path | Role |
 | --- | --- | --- |
-| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `set_compromised`, `set_approver` |
+| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `endorse`, `set_compromised`, `set_approver` |
 | Server | `server/` | Bun: pairing relay, fee payer, indexer, lookup API, proof pages |
 | Phone page | `phone/` | The app's screen; in Chrome it does the one wallet step through Mobile Wallet Adapter |
 | App | `android/` | Android app: the phone page plus a fingerprint-only Ed25519 key in secure hardware |
@@ -84,6 +88,13 @@ Program ID (devnet): `EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS`
   exported, signs only after a fingerprint match, and is destroyed if a fingerprint is added to
   the phone. `attest` and `set_compromised` accept that key alone; `set_approver` lets the
   wallet move approval to a new key if it is lost.
+- **Addresses other programs can read.** `endorse(address)` is `attest` for a post that names a
+  Solana address. The program checks that the address appears in the text the fingerprint key
+  signed, then creates an `Endorsement` account at seeds `["address", handle, address]`. Anyone
+  can derive that address and see whether it exists: a wallet before a swap, or a program
+  through an account constraint. The server chooses which instruction to send but cannot
+  record an address the owner did not approve. `GET /v1/address/<address>` is the same lookup
+  over HTTP.
 - **Kill switch.** `set_compromised` signs a message with a counter stored on the device
   account, so a captured signature cannot be replayed.
 

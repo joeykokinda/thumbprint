@@ -172,6 +172,109 @@
       ]
     },
     {
+      "name": "endorse",
+      "docs": [
+        "The same approval as `attest`, for a post that names a Solana address (a token mint, a",
+        "contract, a treasury). It also creates a small account at a known address, so a wallet",
+        "or another program can check \"did this handle's phone approve this address?\" by looking",
+        "for that account, without asking any server."
+      ],
+      "discriminator": [
+        2,
+        228,
+        252,
+        182,
+        105,
+        92,
+        40,
+        175
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "endorsement",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  100,
+                  100,
+                  114,
+                  101,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device.handle",
+                "account": "Device"
+              },
+              {
+                "kind": "arg",
+                "path": "address"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "address",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "set_approver",
       "docs": [
         "Moves approval to a new key, signed by the wallet that linked the device. Needed when the",
@@ -316,6 +419,19 @@
       ]
     },
     {
+      "name": "Endorsement",
+      "discriminator": [
+        167,
+        137,
+        37,
+        17,
+        220,
+        102,
+        104,
+        52
+      ]
+    },
+    {
       "name": "HandleClaim",
       "discriminator": [
         148,
@@ -354,6 +470,19 @@
         107,
         207,
         246
+      ]
+    },
+    {
+      "name": "Endorsed",
+      "discriminator": [
+        86,
+        86,
+        39,
+        142,
+        32,
+        18,
+        56,
+        35
       ]
     },
     {
@@ -400,6 +529,11 @@
       "code": 6005,
       "name": "NotOwner",
       "msg": "This device was linked by a different wallet"
+    },
+    {
+      "code": 6006,
+      "name": "AddressNotInPost",
+      "msg": "The approved post does not contain this address"
     }
   ],
   "types": [
@@ -483,6 +617,63 @@
           {
             "name": "flag_count",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Endorsed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "sgt_mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Endorsement",
+      "docs": [
+        "Exists only if the handle's phone approved a post naming this address.",
+        "Address: seeds [\"address\", handle, address] under this program."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "address",
+            "type": "pubkey"
+          },
+          {
+            "name": "text_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
           }
         ]
       }

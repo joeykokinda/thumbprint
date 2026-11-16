@@ -75,6 +75,18 @@ describe("thumbprint", () => {
     assert.equal(event.data.sgtMint.toBase58(), sgtMint.toBase58());
   });
 
+  it("records an address named in an approved post where any program can find it", async () => {
+    const mint = Keypair.generate().publicKey;
+    const post = `Our only token is ${mint.toBase58()}. Anything else is fake.`;
+    const endorse = (address: PublicKey) =>
+      program.methods.endorse(address).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([deviceSignature(thumb, attestMessage(handle, post))]).rpc();
+    await rejects(endorse(Keypair.generate().publicKey), "AddressNotInPost"); // the server cannot slip in another address
+    const names = (await events(await endorse(mint))).map((event) => event.name);
+    assert.deepEqual(names, ["attested", "endorsed"]);
+    const [record] = PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), mint.toBuffer()], program.programId);
+    assert.equal((await program.account.endorsement.fetch(record)).address.toBase58(), mint.toBase58());
+  });
+
   it("rejects an action with no device signature, or one signed for another account", async () => {
     await rejects(program.methods.attest().accounts(accounts).rpc(), "NotSigned");
     const wrongHandle = deviceSignature(thumb, attestMessage("x:someoneelse", text));

@@ -88,6 +88,52 @@ pub mod thumbprint {
         Ok(())
     }
 
+    /// The same approval as `attest`, for a post that names a Solana address (a token mint, a
+    /// contract, a treasury). It also creates a small account at a known address, so a wallet
+    /// or another program can check "did this handle's phone approve this address?" by looking
+    /// for that account, without asking any server.
+    // ponytail: one address per post, matched as plain text inside the signed post.
+    // Upgrade path: remaining accounts for several addresses, word-boundary matching.
+    pub fn endorse(ctx: Context<Endorse>, address: Pubkey) -> Result<()> {
+        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
+        let prefix = attest_prefix(&ctx.accounts.device.handle);
+        let text = message
+            .strip_prefix(prefix.as_bytes())
+            .ok_or(ThumbprintError::WrongMessage)?;
+        let written = address.to_string();
+        require!(
+            text.windows(written.len()).any(|window| window == written.as_bytes()),
+            ThumbprintError::AddressNotInPost
+        );
+        verify_sgt(
+            ctx.accounts.owner.key,
+            &ctx.accounts.sgt_token_account,
+            &ctx.accounts.sgt_mint,
+        )?;
+        let handle = ctx.accounts.device.handle.clone();
+        let text_hash = hash(text).to_bytes();
+        let timestamp = Clock::get()?.unix_timestamp;
+        let endorsement = &mut ctx.accounts.endorsement;
+        endorsement.handle = handle.clone();
+        endorsement.address = address;
+        endorsement.text_hash = text_hash;
+        endorsement.timestamp = timestamp;
+        emit!(Attested {
+            handle: handle.clone(),
+            text_hash,
+            owner: ctx.accounts.owner.key(),
+            sgt_mint: ctx.accounts.sgt_mint.key(),
+            timestamp,
+        });
+        emit!(Endorsed {
+            handle,
+            address,
+            owner: ctx.accounts.owner.key(),
+            sgt_mint: ctx.accounts.sgt_mint.key(),
+        });
+        Ok(())
+    }
+
     /// Kill switch: the device owner marks the handle as compromised (or clears it).
     /// Works while an attacker holds the social account, because it needs only the device.
     /// The counter in the message stops an old "recovered" signature from being replayed.
@@ -277,6 +323,45 @@ pub struct Act<'info> {
     pub instructions: UncheckedAccount<'info>,
 }
 
+#[derive(Accounts)]
+#[instruction(address: Pubkey)]
+pub struct Endorse<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: proven by the Ed25519 instruction, see signed_message
+    pub owner: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_token_account: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_mint: UncheckedAccount<'info>,
+    #[account(seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
+    pub device: Account<'info, Device>,
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + Endorsement::INIT_SPACE,
+        seeds = [b"address", device.handle.as_bytes(), address.as_ref()],
+        bump
+    )]
+    pub endorsement: Account<'info, Endorsement>,
+    /// CHECK: the instructions sysvar
+    #[account(address = INSTRUCTIONS_ID)]
+    pub instructions: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Exists only if the handle's phone approved a post naming this address.
+/// Address: seeds ["address", handle, address] under this program.
+#[account]
+#[derive(InitSpace)]
+pub struct Endorsement {
+    #[max_len(MAX_HANDLE_LEN)]
+    pub handle: String,
+    pub address: Pubkey,
+    pub text_hash: [u8; 32],
+    pub timestamp: i64,
+}
+
 #[account]
 #[derive(InitSpace)]
 pub struct Device {
@@ -313,6 +398,14 @@ pub struct Attested {
 }
 
 #[event]
+pub struct Endorsed {
+    pub handle: String,
+    pub address: Pubkey,
+    pub owner: Pubkey,
+    pub sgt_mint: Pubkey,
+}
+
+#[event]
 pub struct Flagged {
     pub handle: String,
     pub compromised: bool,
@@ -334,6 +427,8 @@ pub enum ThumbprintError {
     NotVerified,
     #[msg("This device was linked by a different wallet")]
     NotOwner,
+    #[msg("The approved post does not contain this address")]
+    AddressNotInPost,
 }
 
 #[cfg(test)]

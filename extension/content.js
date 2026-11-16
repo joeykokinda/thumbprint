@@ -22,6 +22,8 @@ function visibleText(node) {
   return node.dataset?.block ? text + "\n" : text; // the composer keeps each line in its own block
 }
 
+const ADDRESS_PATTERN = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g;
+
 function readPost(article) {
   const textElement = article.querySelector('[data-testid="tweetText"]');
   const nameElement = article.querySelector('[data-testid="User-Name"]');
@@ -38,6 +40,7 @@ function readPost(article) {
     handle: "x:" + profileLink.getAttribute("href").slice(1).toLowerCase(),
     text,
     postedAt: article.querySelector("time")?.dateTime || null,
+    addresses: text.match(ADDRESS_PATTERN) || [],
     textElement,
     profileLink,
   };
@@ -137,7 +140,7 @@ document.addEventListener("keydown", (event) => event.key === "Escape" && hideCa
 
 function clearMarks(article) {
   article.classList.remove("tp-dim");
-  article.querySelectorAll(".tp-mark, .tp-notice").forEach((node) => node.remove());
+  article.querySelectorAll(".tp-mark, .tp-notice, .tp-address").forEach((node) => node.remove());
 }
 
 function markCertified(post, result) {
@@ -163,6 +166,29 @@ function markCertified(post, result) {
   (post.profileLink.firstElementChild || post.profileLink).append(mark);
 }
 
+// A Solana address that some account's phone approved, in anyone's post. The record is an
+// account on Solana, so the link goes to the chain, not to us.
+function markAddresses(post, approved) {
+  for (const entry of approved) {
+    const row = element("div", "tp-address");
+    row.setAttribute("role", "note");
+    const mine = entry.handle === post.handle;
+    row.append(
+      iconElement("mark", "tp-address-icon"),
+      element("strong", null, mine ? "Official address" : `Official address of @${entry.handle.slice(2)}`),
+      element("span", "tp-mono", `${entry.address.slice(0, 4)}…${entry.address.slice(-4)}`),
+      element("span", "tp-address-how", "approved by fingerprint, recorded on Solana")
+    );
+    const link = element("a", "tp-card-link", "Check onchain ↗");
+    link.href = entry.recordUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    row.append(link);
+    row.addEventListener("click", (event) => event.stopPropagation());
+    post.textElement.after(row);
+  }
+}
+
 // The mark sits inside X's profile link. Keep X from seeing the pointer arrive on it, or its
 // own profile preview opens underneath our card.
 function quietHover(mark) {
@@ -172,10 +198,12 @@ function quietHover(mark) {
 // An unsigned post is a caution; an unsigned post carrying a link is how drainers work.
 // A plain unsigned post gets only the struck mark. The notice appears when there is something
 // to act on: a link to block, or the owner has reported the account compromised.
-function markUnsigned(post, compromised) {
+function markUnsigned(post, compromised, approved) {
   const links = Array.from(post.textElement.querySelectorAll('a[href^="http"]'));
   const name = "@" + post.handle.slice(2);
-  const danger = compromised || links.length > 0;
+  // An address in an unsigned post, that this account's phone never approved: the fake token.
+  const strange = post.addresses.filter((address) => !approved.some((entry) => entry.address === address && entry.handle === post.handle));
+  const danger = compromised || links.length > 0 || strange.length > 0;
   const label = compromised ? "Account compromised" : "No fingerprint on this post";
   const reason = compromised
     ? `The owner of ${name} reported this account as taken over. This post was not approved on their device.`
@@ -214,6 +242,7 @@ function markUnsigned(post, compromised) {
       );
     }
   }
+  if (strange.length) notice.append(element("div", "tp-notice-gate", `${name}'s phone never approved the address in this post. Do not buy it or send funds to it.`));
   notice.addEventListener("click", (event) => event.stopPropagation());
   if (danger) post.textElement.before(notice);
 
@@ -296,7 +325,7 @@ async function scan() {
   if (!pending.length) return;
 
   const items = await Promise.all(
-    pending.map(async ({ post }) => ({ handle: post.handle, hash: await sha256Hex(post.text), postedAt: post.postedAt }))
+    pending.map(async ({ post }) => ({ handle: post.handle, hash: await sha256Hex(post.text), postedAt: post.postedAt, addresses: post.addresses }))
   );
   let results;
   try {
@@ -313,8 +342,9 @@ async function scan() {
     article.dataset.tpStamp = stamp;
     clearMarks(article);
     if (result.state === "certified") markCertified(post, result);
-    else if (result.state === "unsigned") markUnsigned(post, result.compromised);
+    else if (result.state === "unsigned") markUnsigned(post, result.compromised, result.addresses || []);
     else if (dimUnsigned) article.classList.add("tp-dim");
+    if (result.state !== "unsigned") markAddresses(post, result.addresses || []);
   });
 }
 

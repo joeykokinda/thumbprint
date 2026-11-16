@@ -337,3 +337,22 @@ article.tp-dim:focus-within {
     animation-duration: 2s;
   }
 }
+
+/* ---- An address approved by an account's phone ---- */
+.tp-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--tp-accent) 35%, transparent);
+  border-left: 3px solid var(--tp-accent);
+  border-radius: 4px 12px 12px 4px;
+  color: var(--tp-text);
+  font: 400 13px/18px var(--tp-font);
+}
+.tp-address strong { font-weight: 700; }
+.tp-address-icon { display: inline-flex; width: 16px; height: 16px; color: var(--tp-accent); }
+.tp-address-how { flex-basis: 100%; color: var(--tp-muted); }
+.tp-address .tp-card-link { margin-top: 0; }

@@ -36,6 +36,7 @@ database.exec(`
     handle TEXT, text_hash TEXT, owner TEXT, sgt_mint TEXT, timestamp INTEGER, signature TEXT,
     PRIMARY KEY (handle, text_hash));
   CREATE TABLE IF NOT EXISTS flags (handle TEXT PRIMARY KEY, compromised INTEGER);
+  CREATE TABLE IF NOT EXISTS addresses (handle TEXT, address TEXT, signature TEXT, timestamp INTEGER, PRIMARY KEY (handle, address));
   CREATE TABLE IF NOT EXISTS cursor (id INTEGER PRIMARY KEY CHECK (id = 1), signature TEXT);
 `);
 
@@ -58,7 +59,27 @@ for (const column of ["signature TEXT", "reported_at INTEGER"]) try { database.r
 const isCompromised = (handle: string) =>
   Boolean((database.query("SELECT compromised FROM flags WHERE handle = ?").get(handle) as any)?.compromised);
 
-function lookup(item: { handle: string; hash: string; postedAt?: string | null }) {
+// Addresses a handle's phone approved in a post. Each one is also an account on Solana at
+// seeds ["address", handle, address], so wallets and programs can check it without this server.
+const ADDRESS_PATTERN = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g;
+const endorsementAddress = (handle: string, address: anchor.web3.PublicKey) =>
+  anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), address.toBuffer()], program.programId)[0];
+function endorsements(address: string) {
+  return (database.query("SELECT handle, timestamp FROM addresses WHERE address = ? ORDER BY timestamp").all(address) as any[]).map((row) => ({
+    address,
+    handle: row.handle,
+    timestamp: row.timestamp,
+    recordUrl: `https://explorer.solana.com/address/${endorsementAddress(row.handle, new anchor.web3.PublicKey(address)).toBase58()}?cluster=devnet`,
+  }));
+}
+
+function lookup(item: { handle: string; hash: string; postedAt?: string | null; addresses?: string[] }) {
+  const approved = (item.addresses ?? []).slice(0, 4).flatMap((address) => (typeof address === "string" && address.length <= 44 ? endorsements(address) : []));
+  if (approved.length) return { ...lookupOnly(item), addresses: approved };
+  return lookupOnly(item);
+}
+
+function lookupOnly(item: { handle: string; hash: string; postedAt?: string | null }) {
   // The report is itself a signed transaction, so readers get a link to it, not just our word.
   const flag = database.query("SELECT compromised, signature, reported_at FROM flags WHERE handle = ?").get(item.handle) as any;
   const report = flag?.compromised && flag.signature ? { reportedAt: flag.reported_at, reportUrl: `https://explorer.solana.com/tx/${flag.signature}?cluster=devnet` } : {};
@@ -260,7 +281,7 @@ async function act(body: { kind: string; owner: string; handle?: string; approve
     message: Buffer.from(body.message),
     signature: Buffer.from(body.signature, "base64"),
   });
-  const method =
+  const plain =
     body.kind === "bind"
       ? program.methods.bind(String(body.handle), new anchor.web3.PublicKey(body.approver || body.owner)).accounts({ payer: payer.publicKey, verifier: payer.publicKey, ...accounts })
       : body.kind === "approver"
@@ -268,12 +289,21 @@ async function act(body: { kind: string; owner: string; handle?: string; approve
         : body.kind === "flag"
         ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
         : program.methods.attest().accounts(accounts);
+  let method = plain;
   if (body.kind === "attest") {
     // An approval already on record costs nothing to repeat, so a copied signature cannot be
     // replayed to drain the fee payer.
     const text = body.message.startsWith(attestMessage(account.handle, "")) ? body.message.slice(attestMessage(account.handle, "").length) : null;
     const existing = text !== null && (database.query("SELECT signature FROM attestations WHERE handle = ? AND text_hash = ?").get(account.handle, sha256(text)) as any);
     if (existing) return { ok: true, signature: existing.signature };
+    // A post that names a Solana address also records that address onchain, once.
+    for (const candidate of text?.match(ADDRESS_PATTERN) ?? []) {
+      let address;
+      try { address = new anchor.web3.PublicKey(candidate); } catch { continue; }
+      if (address.toBase58() !== candidate || (await connection.getAccountInfo(endorsementAddress(account.handle, address)))) continue;
+      method = program.methods.endorse(address).accounts({ payer: payer.publicKey, ...accounts });
+      break;
+    }
   }
   const signature = await method.preInstructions([proof]).rpc().catch((error: unknown) => Promise.reject(translate(error)));
   // With a Stream configured, the record arrives through it like everyone else's.
@@ -308,6 +338,7 @@ export async function ingest(logs: string[], signature: string, blockTime: numbe
     }
     if (event.name === "Bound") saveBinding(data.handle, owner, sgtMint, blockTime);
     if (event.name === "Flagged") database.run("INSERT OR REPLACE INTO flags (handle, compromised, signature, reported_at) VALUES (?, ?, ?, ?)", [data.handle, data.compromised ? 1 : 0, signature, blockTime]);
+    if (event.name === "Endorsed") database.run("INSERT OR IGNORE INTO addresses VALUES (?, ?, ?, ?)", [data.handle, data.address.toBase58(), signature, blockTime]);
     if (event.name === "Attested") saveAttestation(data.handle, hex(data.text_hash), owner, sgtMint, Number(data.timestamp), signature);
   }
 }
@@ -430,6 +461,7 @@ Bun.serve({
     if (X_CONSUMER_KEY && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("oauth_token") || "", url.searchParams.get("oauth_verifier") || "", url.searchParams.get("denied") || "");
     if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
+    if (url.pathname.startsWith("/v1/address/")) return json(endorsements(url.pathname.slice(12)));
     if (url.pathname === "/v1/recent")
       return json({
         total: (database.query("SELECT COUNT(*) AS count FROM attestations").get() as any).count,
