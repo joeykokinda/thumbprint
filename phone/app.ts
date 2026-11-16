@@ -80,7 +80,7 @@ async function software(message?: string): Promise<Signed> {
 }
 
 // The app's fingerprint key. `sign` shows the system fingerprint prompt with the message on it.
-const NATIVE = (window as any).ThumbprintKey as { publicKey(): string; sign(message: string): void; openBrowser(url: string): void } | undefined;
+const NATIVE = (window as any).ThumbprintKey as { publicKey(): string; sign(message: string): void; openBrowser(url: string): void; xResult(id: string, result: string): void } | undefined;
 const nativeKey = NATIVE?.publicKey() ? new PublicKey(fromBase64(NATIVE.publicKey())).toBase58() : "";
 // In Chrome: the app's key, which this page is here to link with the wallet.
 const linkingFor = query.get("approver") || "";
@@ -199,6 +199,19 @@ function setCompromised(compromised: boolean) {
   });
 }
 
+// The X tab in the app asks here for approval of a draft. X never sees the key, and the handle
+// is the one this phone is linked to, whatever the page claims.
+(window as any).approveForX = async (id: string, text: string) => {
+  let result: object = { ok: true };
+  try {
+    if (!state.device?.handle || state.device.approver !== nativeKey) throw new Error("Link this Seeker first, in the Thumbprint tab");
+    await signAndSubmit({ kind: "attest" }, attestMessage(state.device.handle, text));
+  } catch (error: any) {
+    result = { ok: false, reason: error?.message || String(error) };
+  }
+  NATIVE!.xResult(id, JSON.stringify(result));
+};
+
 // ---- Relay ----
 
 let socket: WebSocket | null = null;
@@ -315,7 +328,7 @@ function body(): string {
       <button class="quiet" data-action="cancelKill">Cancel</button>`;
 
   return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Protecting ${escapeHtml(name)}</h1>
-      <p>${state.lastSigned ? "Signed. Your post is going out." : NATIVE ? "Write a post here, or on your computer. Either way it goes out only with your fingerprint." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
+      <p>${state.lastSigned ? "Signed. Your post is going out." : NATIVE ? "Write a post here, in the X tab, or on your computer. It goes out only with your fingerprint." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
       ${NATIVE ? `<form data-action="compose"><textarea name="text" required rows="4" maxlength="280" placeholder="Write a post"></textarea>
       <button class="primary">Approve and post</button></form>` : ""}
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div>

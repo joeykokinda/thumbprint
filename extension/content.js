@@ -350,7 +350,12 @@ async function scan() {
 
 // ---- Composer ----
 
+// Inside the Thumbprint app the phone signs for the one account it is linked to, and X's mobile
+// layout has no profile tab to read a handle from.
+const HOSTED = "ThumbprintHost" in globalThis;
+
 function myHandle() {
+  if (HOSTED) return "x:linked";
   const profileLink = document.querySelector('a[data-testid="AppTabBar_Profile_Link"]');
   return profileLink ? "x:" + profileLink.getAttribute("href").slice(1).toLowerCase() : null;
 }
