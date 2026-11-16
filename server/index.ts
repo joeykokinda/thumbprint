@@ -183,23 +183,44 @@ function startSignIn(owner: string, session: string) {
   return Response.redirect(`https://x.com/i/oauth2/authorize?${query}`, 302);
 }
 
-async function finishSignIn(state: string, code: string) {
+const signInFailed = (reason: string) =>
+  typed(
+    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Thumbprint</title>
+<body style="margin:0;background:#000;color:#e7e9ea;font:16px/1.45 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh">
+<main style="max-width:420px;padding:24px;text-align:center"><h1 style="font-size:22px;margin:0 0 8px">Sign-in did not finish</h1>
+<p style="color:#71767b;margin:0 0 24px">${escapeHtml(reason)}</p>
+<a href="/phone" style="display:block;padding:15px;border-radius:9999px;background:#14f195;color:#000;font-weight:700;text-decoration:none">Back to Thumbprint</a></main>`,
+    "text/html; charset=utf-8",
+  );
+
+async function finishSignIn(state: string, code: string, denied: string) {
   const pending = signIns.get(state);
-  if (!pending) return new Response("This sign-in expired. Go back and try again.", { status: 400 });
-  signIns.delete(state);
+  if (!pending) return signInFailed("This sign-in link is no longer valid. Start again from the Link screen.");
+  const back = Response.redirect(`${PUBLIC_URL}/phone?session=${encodeURIComponent(pending.session)}`, 302);
+  // Browsers sometimes load the callback twice; the second visit must not undo the first.
+  if (signedIn.has(pending.owner)) return back;
+  if (denied || !code) return signInFailed("X did not grant access. Start again and choose Authorize.");
   const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded" };
   if (X_CLIENT_SECRET) headers.authorization = "Basic " + Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString("base64");
-  const token = (await (
-    await fetch("https://api.x.com/2/oauth2/token", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams({ code, grant_type: "authorization_code", client_id: X_CLIENT_ID!, redirect_uri: `${PUBLIC_URL}/auth/x/callback`, code_verifier: pending.verifier }),
-    })
-  ).json()) as any;
-  const me = (await (await fetch("https://api.x.com/2/users/me", { headers: { authorization: `Bearer ${token.access_token}` } })).json()) as any;
-  if (!me?.data?.username) return new Response("X did not confirm the account. Go back and try again.", { status: 400 });
+  const tokenResponse = await fetch("https://api.x.com/2/oauth2/token", {
+    method: "POST",
+    headers,
+    body: new URLSearchParams({ code, grant_type: "authorization_code", client_id: X_CLIENT_ID!, redirect_uri: `${PUBLIC_URL}/auth/x/callback`, code_verifier: pending.verifier }),
+  });
+  const token = (await tokenResponse.json().catch(() => ({}))) as any;
+  if (!token.access_token) {
+    console.error(`x sign-in: token exchange ${tokenResponse.status} ${token.error ?? ""} ${token.error_description ?? ""}`);
+    return signInFailed("X did not accept the sign-in. Start again from the Link screen.");
+  }
+  const meResponse = await fetch("https://api.x.com/2/users/me", { headers: { authorization: `Bearer ${token.access_token}` } });
+  const me = (await meResponse.json().catch(() => ({}))) as any;
+  if (!me?.data?.username) {
+    console.error(`x sign-in: users/me ${meResponse.status} ${me.title ?? ""} ${me.detail ?? ""}`);
+    return signInFailed(meResponse.status === 402 || meResponse.status === 403 || meResponse.status === 429 ? "X would not share the account name with this app. Use the post option instead." : "X did not confirm the account. Start again from the Link screen.");
+  }
   signedIn.set(pending.owner, "x:" + String(me.data.username).toLowerCase());
-  return Response.redirect(`${PUBLIC_URL}/phone?session=${encodeURIComponent(pending.session)}`, 302);
+  console.log(`x sign-in: confirmed a handle for ${pending.owner.slice(0, 4)}…`);
+  return back;
 }
 
 const translate = (error: any) => {
@@ -392,7 +413,7 @@ Bun.serve({
       return guarded(request.json().then((body: any) => ingestStream(body)));
     }
     if (X_CLIENT_ID && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
-    if (X_CLIENT_ID && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("state") || "", url.searchParams.get("code") || "");
+    if (X_CLIENT_ID && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("state") || "", url.searchParams.get("code") || "", url.searchParams.get("error") || "").catch(() => signInFailed("Could not reach X. Try again."));
     if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
     if (url.pathname === "/v1/recent")
