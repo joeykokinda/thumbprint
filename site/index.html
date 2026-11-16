@@ -249,7 +249,7 @@
         <div class="scene-bar label"><span><i class="sq"></i><span id="scene-phase">Signing</span></span><span id="scene-note"></span></div>
         <div class="scene-body">
           <div class="sphone" id="sphone"></div>
-          <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" id="feed"></div></figure>
+          <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" id="scene-feed"></div></figure>
         </div>
       </div>
     </div>
@@ -427,7 +427,7 @@
   document.querySelectorAll("[data-mock]").forEach((root) => MOCKS[root.dataset.mock](root));
 
   // ---- Hero scene: the phone approves, the timeline shows it, then the account is hijacked ----
-  const feed = document.getElementById("feed");
+  const feed = document.getElementById("scene-feed");
   const phone = document.getElementById("sphone");
   const phaseLabel = document.getElementById("scene-phase");
   const sceneNote = document.getElementById("scene-note");
