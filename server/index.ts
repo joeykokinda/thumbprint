@@ -4,6 +4,7 @@ import { Database } from "bun:sqlite";
 import * as anchor from "@coral-xyz/anchor";
 import QRCode from "qrcode";
 import { homedir } from "node:os";
+import { attestMessage } from "../phone/messages.ts";
 import { proofCode, verifyProof } from "./proof.ts";
 import idl from "./idl.json"; // copied from target/idl after anchor build
 
@@ -11,6 +12,7 @@ const PORT = Number(process.env.PORT || 8787);
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const PROGRAM_RPC = process.env.PROGRAM_RPC || "https://api.devnet.solana.com";
 const MAINNET_RPC = process.env.MAINNET_RPC || "https://api.mainnet-beta.solana.com";
+const STREAM_TOKEN = process.env.STREAM_TOKEN; // set once the QuickNode Stream is live: it becomes the only data source
 const DEV = process.env.THUMBPRINT_DEV === "1"; // enables /dev/* seeding and skips the token check
 const SGT_GROUP = "GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te";
 const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
@@ -80,12 +82,17 @@ function lookupPost(item: { handle: string; hash: string; postedAt?: string | nu
 
 // ---- Seeker Genesis Token check, over mainnet RPC ----
 
-async function rpc(url: string, method: string, params: unknown[]) {
+async function rpc(url: string, method: string, params: unknown[], attempt = 0): Promise<any> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
+  // Public endpoints rate-limit hard; back off and retry rather than fail an approval.
+  if (response.status === 429 && attempt < 4) {
+    await Bun.sleep(400 * 2 ** attempt);
+    return rpc(url, method, params, attempt + 1);
+  }
   const body = (await response.json()) as any;
   if (body.error) throw new Error(`${method}: ${body.error.message}`);
   return body.result;
@@ -103,8 +110,14 @@ const heldTokens = async (owner: string, filter: object) =>
     .filter((account: any) => account.account.data.parsed.info.tokenAmount.amount === "1")
     .map((account: any) => ({ tokenAccount: account.pubkey as string, mint: account.account.data.parsed.info.mint as string }));
 
+// Positive answers are remembered: the token cannot leave its wallet, and the public RPC is slow.
+const verifiedHolders = new Set<string>();
 export async function holdsGenesisToken(owner: string, sgtMint: string): Promise<boolean> {
-  return (await isGenesisMint(sgtMint)) && (await heldTokens(owner, { mint: sgtMint })).length > 0;
+  const key = `${owner}|${sgtMint}`;
+  if (verifiedHolders.has(key)) return true;
+  const holds = (await isGenesisMint(sgtMint)) && (await heldTokens(owner, { mint: sgtMint })).length > 0;
+  if (holds) verifiedHolders.add(key);
+  return holds;
 }
 
 // Finds the Genesis Token in a wallet. Found tokens are remembered to spare the public RPC.
@@ -115,18 +128,19 @@ async function findGenesisToken(owner: string) {
     if (await isGenesisMint(token.mint)) return knownTokens.set(owner, token).get(owner)!;
   }
   // Dev only: lets a wallet without the token exercise the flow. ingest() also skips the check in dev.
-  return DEV ? { tokenAccount: owner, mint: owner } : null;
+  return DEV ? knownTokens.set(owner, { tokenAccount: owner, mint: owner }).get(owner)! : null;
 }
+
+const MAX_MESSAGE_BYTES = 640; // ponytail: one transaction's worth. Upgrade path: sign a hash shown beside the text.
+const sha256 = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
+const deviceAddress = (sgtMint: string) =>
+  anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("device"), new anchor.web3.PublicKey(sgtMint).toBuffer()], program.programId)[0];
 
 async function device(owner: string) {
   new anchor.web3.PublicKey(owner); // throws on a malformed address
   const token = await findGenesisToken(owner);
   if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
-  const [address] = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("device"), new anchor.web3.PublicKey(token.mint).toBuffer()],
-    program.programId,
-  );
-  const account = await program.account.device.fetchNullable(address);
+  const account = await program.account.device.fetchNullable(deviceAddress(token.mint));
   return {
     owner,
     sgtMint: token.mint,
@@ -137,7 +151,10 @@ async function device(owner: string) {
   };
 }
 
-const translate = (error: any) => new Error(error?.error?.errorMessage || error?.message || String(error));
+const translate = (error: any) => {
+  const message = error?.error?.errorMessage || error?.message || String(error);
+  return new Error(/429|Too many requests/i.test(message) ? "Solana is busy right now. Try again." : message);
+};
 
 // The phone sends a message it signed; we wrap it in a transaction, pay for it and submit it.
 // The program verifies the signature against the message it expects, so this server cannot
@@ -147,6 +164,8 @@ async function act(body: { kind: string; owner: string; handle?: string; proof?:
   // device's code. Dev mode lets the test signer link without posting.
   if (body.kind === "bind" && !(DEV && !body.proof) && (await verifyProof(body.owner, String(body.proof))) !== body.handle)
     return { error: "That post was not made by this account." };
+  // The whole message rides in one transaction. Refuse early, before the owner is asked to sign.
+  if (Buffer.byteLength(body.message) > MAX_MESSAGE_BYTES) return { error: "This post is too long to approve." };
   const owner = new anchor.web3.PublicKey(body.owner);
   const token = await findGenesisToken(body.owner);
   if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
@@ -162,9 +181,26 @@ async function act(body: { kind: string; owner: string; handle?: string; proof?:
       : body.kind === "flag"
         ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
         : program.methods.attest().accounts(accounts);
+  if (body.kind === "attest") {
+    // An approval already on record costs nothing to repeat, so a copied signature cannot be
+    // replayed to drain the fee payer.
+    const account = await program.account.device.fetchNullable(deviceAddress(token.mint));
+    const text = account && body.message.startsWith(attestMessage(account.handle, "")) ? body.message.slice(attestMessage(account.handle, "").length) : null;
+    const existing = text !== null && (database.query("SELECT signature FROM attestations WHERE handle = ? AND text_hash = ?").get(account.handle, sha256(text)) as any);
+    if (existing) return { ok: true, signature: existing.signature };
+  }
   const signature = await method.preInstructions([proof]).rpc().catch((error: unknown) => Promise.reject(translate(error)));
-  const confirmed = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
-  await ingest(confirmed?.meta?.logMessages ?? [], signature, confirmed?.blockTime ?? Math.floor(Date.now() / 1000));
+  // With a Stream configured, the record arrives through it like everyone else's.
+  if (!STREAM_TOKEN) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const confirmed = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" }).catch(() => null);
+      if (confirmed) {
+        await ingest(confirmed.meta?.logMessages ?? [], signature, confirmed.blockTime ?? Math.floor(Date.now() / 1000)).catch(() => {});
+        break;
+      }
+      await Bun.sleep(500); // the poller picks it up if this never lands
+    }
+  }
   return { ok: true, signature };
 }
 
@@ -192,7 +228,6 @@ export async function ingest(logs: string[], signature: string, blockTime: numbe
 
 // Primary data source: a QuickNode Stream (see quicknode/filter.js) pushes every transaction
 // that touches the program to POST /v1/stream. Set STREAM_TOKEN to accept it.
-const STREAM_TOKEN = process.env.STREAM_TOKEN;
 async function ingestStream(body: { transactions?: { signature: string; blockTime?: number; logs: string[] }[] }) {
   for (const entry of body.transactions ?? []) await ingest(entry.logs, entry.signature, entry.blockTime ?? Math.floor(Date.now() / 1000));
   return { ok: true, received: body.transactions?.length ?? 0 };
@@ -211,27 +246,35 @@ async function poll() {
     database.run("INSERT INTO cursor VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET signature = excluded.signature", [entry.signature]);
   }
 }
-if (process.env.POLL !== "0") {
-  setInterval(() => poll().catch((error) => console.error("poll failed:", error.message)), 2500);
+if (!STREAM_TOKEN && process.env.POLL !== "0") {
+  // One pass at a time: the next starts only after the last has finished.
+  const loop = () => poll().catch((error) => console.error("poll failed:", error.message)).finally(() => setTimeout(loop, 3000));
+  loop();
 }
 
 // ---- Pairing relay ----
 
-const phones = new Map<string, any>(); // session -> phone websocket
+// session -> every phone page open on it. A second page joining (someone else scanning the
+// pairing code) cannot push the owner's phone out; it only sees the request, and cannot sign it.
+const phones = new Map<string, Set<any>>();
 
 async function approve(body: { session: string; handle: string; text: string; hash: string }) {
-  const phone = phones.get(body.session);
-  if (!phone) return { ok: false, reason: "Phone not connected" };
+  const sockets = phones.get(body.session);
+  if (!sockets?.size) return { ok: false, reason: "Phone not connected" };
+  if (Buffer.byteLength(attestMessage(body.handle, body.text)) > MAX_MESSAGE_BYTES) return { ok: false, reason: "Too long to sign" };
   const key = `${body.handle}|${body.hash}`;
   let timedOut = false;
+  let resolver: unknown;
   const signature = await new Promise<string | null>((resolve) => {
     waiters.set(key, resolve);
     pending.set(body.session, key);
     setTimeout(() => ((timedOut = true), resolve(null)), APPROVAL_TIMEOUT_MS);
-    phone.send(JSON.stringify({ type: "request", handle: body.handle, text: body.text }));
+    for (const socket of sockets) socket.send(JSON.stringify({ type: "request", handle: body.handle, text: body.text }));
+    resolver = resolve;
   });
-  waiters.delete(key);
-  pending.delete(body.session);
+  // A retry of the same text may have replaced these; only clear our own.
+  if (waiters.get(key) === resolver) waiters.delete(key);
+  if (pending.get(body.session) === key) pending.delete(body.session);
   return signature ? { ok: true, signature } : { ok: false, reason: timedOut ? "Not approved in time" : "Rejected on phone" };
 }
 
@@ -267,7 +310,7 @@ if (!phoneBundle.success) throw new AggregateError(phoneBundle.logs, "phone page
 const phoneScript = await phoneBundle.outputs[0].text();
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#14f195" stroke-width="1.75" stroke-linecap="round"><rect width="24" height="24" fill="#000" stroke="none"/><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>`;
 const typed = (body: string | Blob, type: string) => new Response(body, { headers: { "content-type": type } });
-const guarded = (work: Promise<unknown>) => work.then((value) => json(value), (error) => json({ error: error.message }, 400));
+const guarded = (work: Promise<unknown>) => work.then((value) => json(value), (error) => json({ error: translate(error).message }, 400));
 
 Bun.serve({
   port: PORT,
@@ -295,7 +338,7 @@ Bun.serve({
     if (url.pathname === "/v1/proof")
       return guarded(verifyProof(url.searchParams.get("owner") || "", url.searchParams.get("link") || "").then((handle) => ({ handle })));
     if (request.method === "POST" && url.pathname === "/v1/act") return guarded(request.json().then((body: any) => act(body)));
-    if (url.pathname === "/v1/paired") return json({ paired: phones.has(url.searchParams.get("session") || "") });
+    if (url.pathname === "/v1/paired") return json({ paired: Boolean(phones.get(url.searchParams.get("session") || "")?.size) });
     if (url.pathname.startsWith("/p/")) return proofPage(url.pathname.slice(3));
     // Dev preview bridge: a popup on this origin hands the extension source to the page that
     // opened it and then stands in for the background worker, so the real content script can run
@@ -304,7 +347,11 @@ Bun.serve({
       const read = (name: string) => Bun.file(new URL(`../extension/${name}`, import.meta.url)).text();
       const bundle = { css: await read("content.css"), js: (await read("shared.js")) + "\n" + (await read("content.js")) };
       const page = `<title>Thumbprint dev bridge</title><script>${await read("shared.js")}
-const session = new URLSearchParams(location.search).get("session");
+const params = new URLSearchParams(location.search);
+const session = params.get("session");
+// ?from=x:real&as=x:test answers for one handle with another's records, so the flow can be
+// exercised on a logged-in account without linking that account to a test key.
+const swap = (handle) => (handle === params.get("from") ? params.get("as") : handle);
 const post = (path, body) => fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((response) => response.json());
 opener.postMessage({ tpBundle: ${JSON.stringify(bundle).replace(/</g, "\\u003c")} }, "*");
 addEventListener("message", async (event) => {
@@ -312,8 +359,8 @@ addEventListener("message", async (event) => {
   if (!tpCall) return;
   let result = null;
   try {
-    if (message.type === "lookup") result = await post("/v1/lookup", message.items);
-    if (message.type === "approve") result = await post("/v1/approve", { session, handle: message.handle, text: message.text, hash: await sha256Hex(message.text) });
+    if (message.type === "lookup") result = await post("/v1/lookup", message.items.map((item) => ({ ...item, handle: swap(item.handle) })));
+    if (message.type === "approve") result = await post("/v1/approve", { session, handle: swap(message.handle), text: message.text, hash: await sha256Hex(message.text) });
   } catch {
     result = message.type === "approve" ? { ok: false, reason: "Server unreachable" } : null;
   }
@@ -337,10 +384,10 @@ addEventListener("message", async (event) => {
   },
   websocket: {
     open(socket: any) {
-      phones.set(socket.data.session, socket);
+      phones.set(socket.data.session, (phones.get(socket.data.session) ?? new Set()).add(socket));
     },
     close(socket: any) {
-      if (phones.get(socket.data.session) === socket) phones.delete(socket.data.session);
+      phones.get(socket.data.session)?.delete(socket);
     },
     message(socket: any, raw: string) {
       if (JSON.parse(raw).type === "reject") waiters.get(pending.get(socket.data.session) || "")?.(null);

@@ -1,5 +1,5 @@
 {
-  "license": "",
+  "license": "MIT",
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^3.0.2",
@@ -10,5 +10,13 @@
   "devDependencies": {
     "typescript": "^5.7.3"
   },
-  "type": "module"
+  "type": "module",
+  "name": "thumbprint",
+  "private": true,
+  "scripts": {
+    "server": "bun server/index.ts",
+    "dev": "THUMBPRINT_DEV=1 bun server/index.ts",
+    "smoke": "bun server/smoke.ts",
+    "test": "bun test"
+  }
 }

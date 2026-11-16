@@ -13,14 +13,15 @@ Built for the UBC 2026 hackathon. Runs on Solana devnet.
 - **Link once.** The owner publishes one post carrying their device's code, then confirms with a
   fingerprint. One Seeker protects one handle.
 - **Approve each post.** A small button next to Post in X's composer sends the draft to the
-  paired Seeker. The phone shows the exact text, the owner approves with a fingerprint, the
-  approval lands on Solana, and the extension presses Post.
+  paired Seeker. The phone shows the text, with each link reduced to the site it points to, the
+  owner approves with a fingerprint, the approval lands on Solana, and the extension presses Post.
 - **Read.** Approved posts get a fingerprint mark next to the author's name. Hovering shows when
   and on which device, with a link to a public proof page.
 - **Warn.** A post with no approval, from an account that signs, is marked "Not signed". If it
   carries links they are blocked until the reader chooses to open them.
 - **Kill switch.** One tap on the Seeker marks the account compromised for every reader, even
-  while someone else controls the X session.
+  while someone else controls the X session: a warning on the profile, and on every post made
+  without the device.
 
 Readers need only the extension. Only accounts that want protection need a Seeker.
 
@@ -61,7 +62,9 @@ Program ID (devnet): `BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc`
   by the post text. The server puts that signature in an Ed25519 precompile instruction and the
   program reads it back through the instructions sysvar, checking the key and rebuilding the
   expected message itself. The post hash that is recorded is computed onchain from the signed
-  text. The server pays fees but cannot record anything the device did not sign.
+  text. The device account stores the wallet that linked it and every later action must carry
+  that wallet's signature, so the server pays fees but cannot record anything the device did
+  not sign.
 - **Seeker Genesis Token.** A device is identified by its Genesis Token mint, and its account is
   a PDA of that mint: one device, one handle. The program verifies the token (Token-2022 group
   member of the Genesis group, held by the signer). On devnet that check is compiled out with
@@ -87,48 +90,62 @@ The indexer's data source is one Stream:
   decodes the Anchor events in the logs (`Bound`, `Attested`, `Flagged`) and updates the lookup
   table the extension reads.
 
-Without `STREAM_TOKEN` the server falls back to polling the public RPC, which is what local
-development uses.
+With `STREAM_TOKEN` set, the Stream is the only way records reach the server: the RPC poller
+is off and the server does not read back its own transactions. Without it, the server polls
+the public RPC, which is what local development uses.
 
 ## Setup
 
-Needs [Bun](https://bun.sh), pnpm, Chrome, and for the program Rust, Solana CLI and Anchor 0.31.1.
+Needs [Bun](https://bun.sh), pnpm and Chrome. The program also needs Rust, the Solana CLI,
+Anchor 0.31.1 and Node 22.18 or newer (the tests run as TypeScript under `node --test`).
 
 ```sh
+git clone https://github.com/joeykokinda/thumbprint && cd thumbprint
 pnpm install
+bun test                                  # link normalization, proof post, Stream filter
 THUMBPRINT_DEV=1 bun server/index.ts      # http://localhost:8787, uses the deployed devnet program
+```
+
+**See it on x.com without a phone.** Load the extension (`chrome://extensions`, Developer mode,
+Load unpacked, pick `extension/`), then seed records on the dev server:
+
+```sh
+bun server/dev.ts certify x:somehandle "the exact text of one of their posts"   # green mark
+bun server/dev.ts protect x:somehandle                                          # their other posts read as not signed
+```
+
+**Run the real flow.** The deployed program only accepts new links co-signed by our verifier
+key, so to link accounts yourself deploy your own copy:
+
+```sh
+solana-keygen new -o target/deploy/thumbprint-keypair.json --force
+anchor keys sync                          # writes the new program ID into lib.rs and Anchor.toml
+# put your wallet's address in VERIFIER (devnet) in programs/thumbprint/src/lib.rs
+anchor build -- --features devnet && cp target/idl/thumbprint.json server/idl.json
+solana program deploy target/deploy/thumbprint.so --program-id target/deploy/thumbprint-keypair.json -u devnet
+THUMBPRINT_DEV=1 bun server/index.ts
 bun server/smoke.ts                       # links a throwaway key, approves a post, looks it up
 ```
 
-The server pays transaction fees from `~/.config/solana/id.json` (override with
-`PAYER_KEYPAIR`); it needs a little devnet SOL. Linking a handle on the deployed program needs
-the verifier key, so to link accounts yourself deploy your own copy with your key in `VERIFIER`.
+The server pays fees and rent from `~/.config/solana/id.json`; fund it at
+[faucet.solana.com](https://faucet.solana.com).
 
-Extension: open `chrome://extensions`, turn on Developer mode, Load unpacked, pick `extension/`.
+**Phone.** With a Seeker on USB, `adb reverse tcp:8787 tcp:8787`, then scan the pairing code in
+the extension popup. Without a Seeker, open
+`http://localhost:8787/phone?session=test&signer=software` for a test key held by the page
+(dev mode only).
 
-Phone, with a Seeker on USB:
-
-```sh
-adb reverse tcp:8787 tcp:8787
-```
-
-Then open the extension popup and scan the pairing code with the Seeker. Without a Seeker,
-open `http://localhost:8787/phone?session=<session>&signer=software` to use a test key held by
-the page (dev mode only).
-
-Program:
-
-```sh
-anchor test                               # localnet, real Genesis Token check
-bun test                                  # proof post and Stream filter checks
-anchor build -- --features devnet && cp target/idl/thumbprint.json server/idl.json
-```
+**Program tests.** `anchor test` runs on localnet with the real Genesis Token check, against a
+Genesis Token mint cloned from mainnet.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `THUMBPRINT_DEV` | off | `1` allows the test signer and `/dev/*` routes |
+| `THUMBPRINT_DEV` | off | `1` allows the test signer, linking without a proof post, and `/dev/*` routes |
+| `PORT` | `8787` | Port to listen on |
 | `PUBLIC_URL` | `http://localhost:8787` | Address used in pairing codes and proof links |
-| `STREAM_TOKEN` | unset | Shared secret for the QuickNode webhook |
+| `DATABASE` | `thumbprint.sqlite` | Index file |
+| `PAYER_KEYPAIR` | `~/.config/solana/id.json` | Fee payer and verifier key |
+| `STREAM_TOKEN` | unset | Shared secret for the QuickNode webhook; makes the Stream the only data source |
 | `POLL` | on | `0` turns off the RPC polling fallback |
 | `PROGRAM_RPC`, `MAINNET_RPC` | public endpoints | RPC for the program and for the Genesis Token check |
 
@@ -139,3 +156,9 @@ anchor build -- --features devnet && cp target/idl/thumbprint.json server/idl.js
 - Links are bound by domain, not full path, because X rewrites them.
 - Someone who holds the phone and can unlock it can sign.
 - The extension depends on X's page structure.
+- A post longer than one transaction can carry (about 600 bytes) cannot be approved yet.
+- Posts cut off by "Show more" get no mark in the timeline.
+
+## License
+
+MIT

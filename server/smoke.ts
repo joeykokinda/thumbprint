@@ -25,6 +25,8 @@ const bound = await act({ kind: "bind", handle }, bindMessage(handle));
 expect("links a handle", bound.ok, bound);
 const attested = await act({ kind: "attest" }, attestMessage(handle, text));
 expect("records an approval", attested.ok, attested);
+const replayed = await act({ kind: "attest" }, attestMessage(handle, text));
+expect("a repeated approval is answered from the record, not paid for again", replayed.signature === attested.signature, replayed);
 const hash = createHash("sha256").update(text).digest("hex");
 const [found] = (await (await fetch(`${SERVER}/v1/lookup`, { method: "POST", body: JSON.stringify([{ handle, hash }]) })).json()) as any[];
 expect("lookup finds the approved post", found.state === "certified", found);

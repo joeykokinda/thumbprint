@@ -3,7 +3,11 @@ importScripts("shared.js");
 
 const DEFAULT_SERVER = "http://localhost:8787";
 
-async function settings() {
+// One shared promise, so two first messages cannot each invent a session id.
+let cached;
+const settings = () => (cached ??= loadSettings());
+
+async function loadSettings() {
   const stored = await chrome.storage.local.get({ server: DEFAULT_SERVER, session: null });
   if (!stored.session) {
     stored.session = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, "0")).join("");

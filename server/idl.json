@@ -25,7 +25,10 @@
       ],
       "accounts": [
         {
-          "name": "owner"
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
         },
         {
           "name": "sgt_token_account"
@@ -179,7 +182,10 @@
       ],
       "accounts": [
         {
-          "name": "owner"
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
         },
         {
           "name": "sgt_token_account"
@@ -317,6 +323,11 @@
       "code": 6004,
       "name": "NotVerified",
       "msg": "Linking a handle needs the verifier's signature"
+    },
+    {
+      "code": 6005,
+      "name": "NotOwner",
+      "msg": "This device was linked by a different wallet"
     }
   ],
   "types": [
@@ -378,6 +389,13 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "owner",
+            "docs": [
+              "The wallet that linked this device. Every later action must be signed by it."
+            ],
+            "type": "pubkey"
+          },
           {
             "name": "handle",
             "type": "string"

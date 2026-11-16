@@ -4,8 +4,9 @@
 // Each link is reduced to its domain and kept in the hash, so copying a signed post's wording
 // and pointing it at a different site does not carry the signature along.
 // ponytail: binds the domain, not the full path, because X truncates long links on screen.
-// A bare domain typed with an unlisted TLD is treated as plain text on the composer side.
-globalThis.URL_PATTERN = /https?:\/\/\S+|\b[\w-]+\.(?:com|org|net|io|xyz|co|app|dev|gg|fi|so|me|ai)\b\S*/gi;
+// Anything shaped like a domain counts as a link. Both sides run this same rule, so matching
+// too much is harmless; matching too little would make a signed post read as unsigned.
+globalThis.URL_PATTERN = /https?:\/\/\S+|\b(?:[\w-]+\.)+[a-z]{2,}\b\S*/gi;
 
 globalThis.linkDomain = function (link) {
   return link

@@ -53,6 +53,16 @@ describe("thumbprint", () => {
         .signers([signer])
         .rpc();
     await rejects(bind(Keypair.generate()), "NotVerified"); // the device alone cannot claim a handle
+    const impostor = Keypair.generate(); // signs correctly but does not hold the Genesis Token
+    await rejects(
+      program.methods
+        .bind(handle)
+        .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts, owner: impostor.publicKey })
+        .preInstructions([deviceSignature(impostor, bindMessage(handle))])
+        .signers([verifier])
+        .rpc(),
+      "NotSeeker",
+    );
     await bind(verifier);
 
     const signature = await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc();
@@ -69,10 +79,10 @@ describe("thumbprint", () => {
     await rejects(program.methods.attest().accounts(accounts).preInstructions([wrongHandle]).rpc(), "WrongMessage");
   });
 
-  it("rejects a signer who does not hold the token", async () => {
+  it("rejects another wallet acting for this device", async () => {
     const impostor = Keypair.generate();
     const signed = deviceSignature(impostor, attestMessage(handle, text));
-    await rejects(program.methods.attest().accounts({ ...accounts, owner: impostor.publicKey }).preInstructions([signed]).rpc(), "NotSeeker");
+    await rejects(program.methods.attest().accounts({ ...accounts, owner: impostor.publicKey }).preInstructions([signed]).rpc(), "NotOwner");
   });
 
   it("flags the account as compromised, and refuses a replayed signature", async () => {

@@ -3,7 +3,9 @@ chrome.storage.sync.get({ dimUnsigned: false }).then((settings) => (dim.checked 
 dim.addEventListener("change", () => chrome.storage.sync.set({ dimUnsigned: dim.checked }));
 
 // The background worker owns the session id; asking it makes sure one exists.
-chrome.runtime.sendMessage({ type: "session" }).then(({ server, session }) => {
+chrome.runtime.sendMessage({ type: "session" }).then((settings) => {
+  if (!settings) return;
+  const { server, session } = settings;
   const status = document.getElementById("status");
   const statusText = document.getElementById("status-text");
   const pairing = document.getElementById("pairing");

@@ -18,7 +18,8 @@ function visibleText(node) {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (node.nodeName === "IMG") return node.alt || "";
   if (node.nodeName === "A" && /^https?:\/\/t\.co\//.test(node.href)) return ` https://${node.textContent.replace(/^https?:\/\//, "")} `;
-  return Array.from(node.childNodes, visibleText).join("");
+  const text = Array.from(node.childNodes, visibleText).join("");
+  return node.dataset?.block ? text + "\n" : text; // the composer keeps each line in its own block
 }
 
 function readPost(article) {
@@ -26,6 +27,11 @@ function readPost(article) {
   const nameElement = article.querySelector('[data-testid="User-Name"]');
   const profileLink = nameElement?.querySelector('a[href^="/"]');
   if (!textElement || !profileLink) return null;
+  // A quote with no words of its own would be judged on the quoted author's text.
+  if (textElement.closest('[role="link"]')) return null;
+  // ponytail: a post cut off by "Show more" cannot be hashed from the timeline, so it gets no
+  // mark either way. Upgrade path: fetch the full text, or check it on the post's own page.
+  if (article.querySelector('[data-testid="tweet-text-show-more-link"]')) return null;
   const text = normalizeText(visibleText(textElement));
   if (!text) return null;
   return {
@@ -215,6 +221,32 @@ function markUnsigned(post, compromised) {
   (post.profileLink.firstElementChild || post.profileLink).append(mark);
 }
 
+// The kill switch is about the account, not one post, so the profile itself carries the warning.
+let profileChecked = { handle: "", at: 0 };
+async function markProfile() {
+  const header = document.querySelector('[data-testid="UserName"]');
+  const handle = header ? "x:" + location.pathname.split("/")[1].toLowerCase() : "";
+  const banner = document.querySelector(".tp-profile-banner");
+  if (banner && banner.dataset.handle !== handle) banner.remove();
+  if (!header || (profileChecked.handle === handle && Date.now() - profileChecked.at < 3500)) return;
+  profileChecked = { handle, at: Date.now() };
+  const [result] = (await chrome.runtime.sendMessage({ type: "lookup", items: [{ handle, hash: "" }] }).catch(() => null)) || [];
+  const current = document.querySelector(".tp-profile-banner");
+  if (!result?.compromised) return current?.remove();
+  if (current || !header.isConnected) return;
+  const notice = element("div", "tp-notice tp-notice-danger tp-profile-banner");
+  notice.dataset.handle = handle;
+  notice.setAttribute("role", "alert");
+  const line = element("div", "tp-notice-line");
+  line.append(
+    iconElement("alert", "tp-notice-icon"),
+    element("strong", null, "Account compromised"),
+    element("span", "tp-notice-reason", `The owner reported from their own device that @${handle.slice(2)} was taken over. Do not trust new posts or links until they recover it.`)
+  );
+  notice.append(line);
+  header.after(notice);
+}
+
 let dimUnsigned = false;
 chrome.storage?.sync.get({ dimUnsigned: false }).then((settings) => {
   dimUnsigned = settings.dimUnsigned;
@@ -234,6 +266,7 @@ function rescanAll() {
 
 async function scan() {
   applyTheme();
+  markProfile();
   const pending = [];
   for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
     const post = readPost(article);
@@ -283,6 +316,20 @@ function composerText(start) {
   return "";
 }
 
+// The background worker's request is cut off after 30 seconds, but reading and approving a post
+// can take longer. When the direct answer is lost, the approval is picked up from lookup instead.
+async function requestApproval(handle, text) {
+  const hash = await sha256Hex(text);
+  const deadline = Date.now() + 120_000;
+  let direct = await chrome.runtime.sendMessage({ type: "approve", handle, text }).catch(() => null);
+  while ((!direct || direct.reason === "Server unreachable") && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const [found] = (await chrome.runtime.sendMessage({ type: "lookup", items: [{ handle, hash }] }).catch(() => null)) || [];
+    if (found?.state === "certified") direct = { ok: true };
+  }
+  return direct || { ok: false, reason: "Not approved in time" };
+}
+
 const BUTTON_STATES = {
   idle: { icon: "mark", label: "", title: "Sign with Thumbprint: approve this post on your Seeker, then post it" },
   waiting: { icon: "spinner", label: "Check your phone", title: "Waiting for approval on your Seeker" },
@@ -317,13 +364,10 @@ function addComposerButtons() {
       const text = composerText(row);
       if (!handle || !text) return;
       setButtonState(button, "waiting");
-      let response;
-      try {
-        response = await chrome.runtime.sendMessage({ type: "approve", handle, text });
-      } catch {
-        response = null;
-      }
-      if (response?.ok) {
+      const response = await requestApproval(handle, text);
+      if (response.ok && composerText(row) !== text) {
+        setButtonState(button, "error", "The draft changed after it was approved. Approve it again.");
+      } else if (response.ok) {
         setButtonState(button, "done");
         postButton.click();
       } else {

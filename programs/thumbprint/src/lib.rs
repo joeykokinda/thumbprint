@@ -49,6 +49,7 @@ pub mod thumbprint {
             &ctx.accounts.sgt_token_account,
             &ctx.accounts.sgt_mint,
         )?;
+        ctx.accounts.device.owner = ctx.accounts.owner.key();
         ctx.accounts.device.handle = handle.clone();
         ctx.accounts.handle_claim.sgt_mint = ctx.accounts.sgt_mint.key();
         emit!(Bound {
@@ -242,7 +243,7 @@ pub struct Act<'info> {
     pub sgt_token_account: UncheckedAccount<'info>,
     /// CHECK: validated in verify_sgt
     pub sgt_mint: UncheckedAccount<'info>,
-    #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump)]
+    #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
     pub device: Account<'info, Device>,
     /// CHECK: the instructions sysvar
     #[account(address = INSTRUCTIONS_ID)]
@@ -252,6 +253,8 @@ pub struct Act<'info> {
 #[account]
 #[derive(InitSpace)]
 pub struct Device {
+    /// The wallet that linked this device. Every later action must be signed by it.
+    pub owner: Pubkey,
     #[max_len(MAX_HANDLE_LEN)]
     pub handle: String,
     pub flag_count: u64,
@@ -299,6 +302,8 @@ pub enum ThumbprintError {
     InvalidHandle,
     #[msg("Linking a handle needs the verifier's signature")]
     NotVerified,
+    #[msg("This device was linked by a different wallet")]
+    NotOwner,
 }
 
 #[cfg(test)]
