@@ -5,51 +5,56 @@
 <meta name="theme-color" content="#000000">
 <title>Thumbprint</title>
 <link rel="icon" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Host+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --accent: #14f195; --danger: #ff5a64; --text: #e7e9ea; --muted: #71767b; --border: #2f3336; --surface: #16181c; }
+  /* Same type, labels and edges as the website, on black. */
+  :root { --accent: #14f195; --danger: #ff5a64; --text: #f1f0ea; --muted: #8a8c85; --border: #2a2c28; --surface: #121311; --sans: "Host Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace; }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: #000; color: var(--text); font: 400 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: #000; color: var(--text); font: 400 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
   main { display: flex; flex-direction: column; gap: 12px; min-height: 100%; max-width: 480px; margin: 0 auto; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); }
   section { margin-bottom: auto; }
-  .hero { padding-top: 12vh; text-align: center; }
-  .glyph { width: 64px; height: 64px; margin: 0 auto 20px; color: var(--accent); }
+  .hero { padding-top: 10vh; }
+  .glyph { width: 56px; height: 56px; margin: 0 0 24px; color: var(--accent); }
   .glyph svg { display: block; width: 100%; height: 100%; }
   .danger .glyph, .hero.danger h1 { color: var(--danger); }
   .pulse { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.35; } }
-  h1 { margin: 0 0 8px; font-size: 24px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+  h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; overflow-wrap: anywhere; }
   p { margin: 0; color: var(--muted); }
-  .eyebrow { margin-bottom: 12px; font-size: 14px; font-weight: 700; color: var(--accent); }
-  blockquote { margin: 0 0 12px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); font-size: 18px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .eyebrow, label, dt, summary, .badge { font: 500 12px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+  .eyebrow { margin-bottom: 12px; color: var(--accent); }
+  .eyebrow::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 10px; background: currentColor; }
+  blockquote { margin: 0 0 12px; padding: 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); font-size: 19px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
   h1 ~ blockquote { margin-top: 16px; }
   .hint { font-size: 13px; }
-  details { font-size: 14px; }
-  summary { padding: 12px 0; color: var(--muted); text-align: center; cursor: pointer; }
+  summary { padding: 14px 0; color: var(--muted); text-align: center; cursor: pointer; }
   details > * + * { margin-top: 12px; }
-  button, .button { width: 100%; min-height: 52px; border: 0; border-radius: 9999px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button, .button { width: 100%; min-height: 56px; border: 1px solid transparent; border-radius: 4px; font: 600 13px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
   .button { display: grid; place-items: center; text-decoration: none; }
   button:active, .button:active { opacity: 0.8; }
   .primary { background: var(--accent); color: #000; }
   .primary.danger { background: var(--danger); color: #fff; }
-  .quiet { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .quiet { background: transparent; color: var(--text); border-color: var(--border); }
   .quiet.danger { color: var(--danger); }
   form { display: grid; gap: 12px; }
-  label { font-size: 13px; color: var(--muted); }
-  .field { display: flex; align-items: center; gap: 4px; padding: 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  label { color: var(--muted); }
+  .field { display: flex; align-items: center; gap: 4px; padding: 0 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
   .field:focus-within { border-color: var(--accent); }
   .field span { color: var(--muted); }
-  input { flex: 1; min-width: 0; height: 52px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
-  textarea { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; outline: 0; resize: none; background: var(--surface); color: var(--text); font: inherit; font-size: 18px; line-height: 1.4; }
+  input { flex: 1; min-width: 0; height: 54px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
+  textarea { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 4px; outline: 0; resize: none; background: var(--surface); color: var(--text); font: inherit; font-size: 19px; line-height: 1.35; }
   textarea:focus { border-color: var(--accent); }
-  dl { margin: 0; border-top: 1px solid var(--border); }
-  dl div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  dl { margin: 0; border-top: 1px dashed var(--border); }
+  dl div { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px dashed var(--border); }
   dt { color: var(--muted); }
-  dd { margin: 0; font-variant-numeric: tabular-nums; }
-  .error { padding: 12px 16px; border: 1px solid var(--danger); border-radius: 12px; color: var(--danger); font-size: 14px; }
-  .badge { text-align: center; font-size: 12px; color: #ffad1f; }
+  dd { margin: 0; font: 500 13px/1.4 var(--mono); }
+  .error { padding: 12px 16px; border: 1px solid var(--danger); border-radius: 4px; color: var(--danger); font-size: 14px; }
+  .badge { text-align: center; color: #ffad1f; }
   @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 </style>
 <main></main>
-<script src="/phone.js?v=3"></script>
+<script src="/phone.js?v=4"></script>
 </html>

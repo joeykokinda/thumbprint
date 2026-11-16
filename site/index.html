@@ -118,18 +118,19 @@
   .xname { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
   .xname b { font-weight: 700; }
   .xname span { color: #536471; overflow: hidden; text-overflow: ellipsis; }
-  .xmark { flex: none; width: 17px; height: 17px; color: var(--accent); }
+  .xmark, .xname .xmark { flex: none; width: 18px; height: 18px; color: #00875a; }
   .xmark svg { display: block; width: 100%; height: 100%; }
-  .xmark.bad { color: var(--alert); }
+  .xmark.bad, .xname .xmark.bad { color: #d91f2a; }
   .xtext { margin-top: 2px; overflow-wrap: anywhere; }
   .xtext s { color: #536471; }
   .xchip { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid #f0c9be; border-radius: 9999px; color: var(--alert); font-size: 12px; font-weight: 600; }
   .xnote { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid #f3d9d1; border-left: 3px solid var(--alert); border-radius: 8px; color: #536471; font-size: 13px; }
   .xnote strong { color: var(--alert); margin-right: 6px; }
   .xnote a { color: var(--accent); font-weight: 600; white-space: nowrap; }
-  .xacts { display: flex; gap: 56px; margin-top: 10px; }
-  .xacts i { width: 15px; height: 15px; border: 1.5px solid #9aa5ad; border-radius: 4px; }
-  .xacts i:nth-child(odd) { border-radius: 50%; }
+  .xacts { display: flex; align-items: center; gap: 4px; margin-top: 10px; color: #536471; font-size: 13px; }
+  .xacts span { display: flex; align-items: center; gap: 4px; flex: 1; }
+  .xacts span:nth-last-child(-n+2) { flex: none; margin-left: 10px; }
+  .xacts svg { width: 18px; height: 18px; }
   .xcard { margin: 8px 0 2px; padding: 12px 14px; max-width: 290px; border: 1px solid #e3e8ea; border-radius: 14px; box-shadow: 0 8px 28px -12px rgba(15, 20, 25, 0.35); font-size: 13px; }
   .xcard b { display: flex; align-items: center; gap: 6px; font-size: 14px; }
   .xcard p { margin: 4px 0 8px; color: #536471; max-width: none; }
@@ -156,15 +157,16 @@
   .device.touch .side { background: var(--glow); box-shadow: 0 0 0 5px rgba(20, 241, 149, 0.22), 0 0 22px var(--glow); }
   .device .thumb { position: absolute; right: -78px; top: 150px; width: 70px; height: 94px; border-radius: 36px 30px 30px 36px / 46px; background: linear-gradient(100deg, #f0cdb0, #d8a684); box-shadow: inset 8px 0 14px -8px rgba(120, 70, 40, 0.5); opacity: 0; transform: translateX(70px) rotate(-6deg); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms; }
   .device.touch .thumb { opacity: 1; transform: translateX(0) rotate(-6deg); }
-  .screen { position: absolute; inset: 0; padding: 38px 16px 18px; display: flex; flex-direction: column; gap: 10px; color: #e7e9ea; font: 400 13px/1.4 system-ui, sans-serif; text-align: center; animation: rise 240ms ease-out; }
-  .screen svg { width: 46px; height: 46px; margin: 30px auto 8px; color: var(--glow); }
+  .screen { position: absolute; inset: 0; padding: 38px 16px 18px; display: flex; flex-direction: column; gap: 10px; color: #f1f0ea; font: 400 13px/1.4 var(--sans); text-align: left; animation: rise 240ms ease-out; }
+  .screen svg { width: 40px; height: 40px; margin: 34px 0 10px; color: var(--glow); }
   .screen.bad svg, .screen.bad h5 { color: #ff5a64; }
-  .screen h5 { margin: 0; font: 700 16px/1.25 system-ui, sans-serif; }
-  .screen p { margin: 0; color: #71767b; }
-  .screen blockquote { margin: 0; padding: 12px; border: 1px solid #2f3336; border-radius: 12px; background: #16181c; text-align: left; font-size: 14px; }
-  .screen .eyebrow { color: var(--glow); font-weight: 700; text-align: left; }
-  .screen .btn-app { margin-top: auto; padding: 12px; border-radius: 9999px; background: var(--glow); color: #000; font-weight: 700; }
-  .screen .btn-app.quiet { background: none; border: 1px solid #2f3336; color: #ff5a64; }
+  .screen h5 { margin: 0; font: 700 19px/1.05 var(--sans); letter-spacing: -0.03em; text-transform: uppercase; overflow-wrap: anywhere; }
+  .screen p { margin: 0; color: #8a8c85; max-width: none; }
+  .screen blockquote { margin: 0; padding: 12px; border: 1px solid #2a2c28; border-radius: 3px; background: #121311; font-size: 14px; }
+  .screen .eyebrow { color: var(--glow); font: 500 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+  .screen .eyebrow::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 8px; background: currentColor; }
+  .screen .btn-app { margin-top: auto; padding: 14px 8px; border-radius: 3px; background: var(--glow); color: #000; font: 600 10px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; text-align: center; }
+  .screen .btn-app.quiet { background: none; border: 1px solid #2a2c28; color: #ff5a64; }
   .screen .btn-app.danger { background: #ff5a64; color: #fff; }
   .device.touch .btn-app { opacity: 0.55; }
   @media (max-width: 760px) { .scene { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 0; } }
@@ -382,6 +384,15 @@
     call: { time: "5h", text: "Rotated out of memes into majors. Thread tomorrow on why.", signed: true },
     drainer: { time: "now", text: "It's finally here. $MAREN presale is live for 1 hour. Send SOL to get in early:", link: "maren-presale.xyz", signed: false },
   };
+  // X's row under a post: reply, repost, like, views, bookmark, share.
+  const ACTIONS = [
+    ["M4 11.5A7.5 7.5 0 0 1 11.5 4h1a7.5 7.5 0 0 1 3.6 14.1L11 21v-2.5a7.5 7.5 0 0 1-7-7z", "48"],
+    ["M4.5 8.5 7 6l2.5 2.5M7 6v9a2 2 0 0 0 2 2h4M19.5 15.5 17 18l-2.5-2.5M17 18V9a2 2 0 0 0-2-2h-4", "212"],
+    ["M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z", "3.1K"],
+    ["M5 20v-6M10 20V9M15 20v-9M20 20V4", "88K"],
+    ["M7 4h10v16l-5-4-5 4z", ""],
+    ["M12 15V4M8 8l4-4 4 4M5 14v5h14v-5", ""],
+  ];
   function post(item, options = {}) {
     const node = el("div", "xpost");
     const body = el("div");
@@ -404,7 +415,7 @@
       body.append(card);
     }
     const acts = el("div", "xacts");
-    acts.append(el("i"), el("i"), el("i"), el("i"));
+    acts.innerHTML = ACTIONS.map(([path, count]) => `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>${item.signed === false && count ? "" : count}</span>`).join("");
     body.append(acts);
     node.append(avatar(), body);
     return node;
