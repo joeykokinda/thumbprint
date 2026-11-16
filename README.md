@@ -158,7 +158,7 @@ Genesis Token mint cloned from mainnet.
 | `PUBLIC_URL` | `http://localhost:8787` | Address used in pairing codes and proof links |
 | `DATABASE` | `thumbprint.sqlite` | Index file |
 | `PAYER_KEYPAIR` | `~/.config/solana/id.json` | Fee payer and verifier key |
-| `X_CLIENT_ID`, `X_CLIENT_SECRET` | unset | Turns on "Sign in with X" for proving handle control (callback `{PUBLIC_URL}/auth/x/callback`); without them linking uses a proof post |
+| `X_CONSUMER_KEY`, `X_CONSUMER_SECRET` | unset | Turns on "Sign in with X" for proving handle control (callback `{PUBLIC_URL}/auth/x/callback`); without them linking uses a proof post |
 | `STREAM_TOKEN` | unset | Shared secret for the QuickNode webhook; makes the Stream the only data source |
 | `POLL` | on | `0` turns off the RPC polling fallback |
 | `PROGRAM_RPC`, `MAINNET_RPC` | public endpoints | RPC for the program and for the Genesis Token check |

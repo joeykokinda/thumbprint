@@ -16,8 +16,8 @@ const STREAM_TOKEN = process.env.STREAM_TOKEN; // set once the QuickNode Stream 
 const DEV = process.env.THUMBPRINT_DEV === "1"; // enables /dev/* seeding and skips the token check
 // Optional "Sign in with X" for proving handle control (OAuth 2.0 with PKCE). Without these,
 // linking uses the proof post in proof.ts.
-const X_CLIENT_ID = process.env.X_CLIENT_ID;
-const X_CLIENT_SECRET = process.env.X_CLIENT_SECRET;
+const X_CONSUMER_KEY = process.env.X_CONSUMER_KEY;
+const X_CONSUMER_SECRET = process.env.X_CONSUMER_SECRET;
 const SGT_GROUP = "GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te";
 const TOKEN_2022 = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const APPROVAL_TIMEOUT_MS = 120_000;
@@ -149,7 +149,7 @@ async function device(owner: string) {
     owner,
     sgtMint: token.mint,
     proofCode: proofCode(owner),
-    xLogin: Boolean(X_CLIENT_ID),
+    xLogin: Boolean(X_CONSUMER_KEY && X_CONSUMER_SECRET),
     provenHandle: signedIn.get(owner) ?? null,
     handle: account?.handle ?? null,
     approver: account?.approver.toBase58() ?? null,
@@ -163,26 +163,32 @@ async function device(owner: string) {
 // their own X account to someone's wallet here. It gains them nothing: linking still needs
 // that wallet's fingerprint over a message naming the handle. State lives in memory.
 const signedIn = new Map<string, string>(); // owner -> "x:handle" proven by X sign-in
-const signIns = new Map<string, { owner: string; session: string; verifier: string }>();
+const signIns = new Map<string, { owner: string; session: string }>();
 const base64url = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
 
-function startSignIn(owner: string, session: string) {
-  new anchor.web3.PublicKey(owner);
-  const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
-  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
-  signIns.set(state, { owner, session, verifier });
-  setTimeout(() => signIns.delete(state), 600_000);
-  const query = new URLSearchParams({
-    response_type: "code",
-    client_id: X_CLIENT_ID!,
-    redirect_uri: `${PUBLIC_URL}/auth/x/callback`,
-    scope: "users.read tweet.read",
-    state,
-    code_challenge: new Bun.CryptoHasher("sha256").update(verifier).digest("base64url"),
-    code_challenge_method: "S256",
-  });
-  return Response.redirect(`https://x.com/i/oauth2/authorize?${query}`, 302);
+// "Log in with X" (OAuth 1.0a). X hands back the account name with the access token itself, so
+// no paid API call is needed to learn who signed in.
+const percent = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, (char) => "%" + char.charCodeAt(0).toString(16).toUpperCase());
+function oauthHeader(url: string, extra: Record<string, string>, tokenSecret = "") {
+  const fields: Record<string, string> = {
+    oauth_consumer_key: X_CONSUMER_KEY!,
+    oauth_nonce: base64url(crypto.getRandomValues(new Uint8Array(16))),
+    oauth_signature_method: "HMAC-SHA1",
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+    oauth_version: "1.0",
+    ...extra,
+  };
+  const joined = Object.keys(fields).sort().map((key) => `${percent(key)}=${percent(fields[key])}`).join("&");
+  const base = `POST&${percent(url)}&${percent(joined)}`;
+  fields.oauth_signature = new Bun.CryptoHasher("sha1", `${percent(X_CONSUMER_SECRET!)}&${percent(tokenSecret)}`).update(base).digest("base64");
+  return "OAuth " + Object.entries(fields).map(([key, value]) => `${percent(key)}="${percent(value)}"`).join(", ");
 }
+const oauthCall = async (url: string, extra: Record<string, string>) => {
+  const response = await fetch(url, { method: "POST", headers: { authorization: oauthHeader(url, extra) } });
+  const text = await response.text();
+  if (!response.ok) console.error(`x sign-in: ${new URL(url).pathname} ${response.status} ${text.slice(0, 300)}`);
+  return new URLSearchParams(response.ok ? text : "");
+};
 
 const signInFailed = (reason: string) =>
   typed(
@@ -194,32 +200,26 @@ const signInFailed = (reason: string) =>
     "text/html; charset=utf-8",
   );
 
-async function finishSignIn(state: string, code: string, denied: string) {
-  const pending = signIns.get(state);
+async function startSignIn(owner: string, session: string) {
+  new anchor.web3.PublicKey(owner);
+  const request = await oauthCall("https://api.x.com/oauth/request_token", { oauth_callback: `${PUBLIC_URL}/auth/x/callback` });
+  const token = request.get("oauth_token");
+  if (!token) return signInFailed("X did not start the sign-in. Use the post option instead.");
+  signIns.set(token, { owner, session });
+  setTimeout(() => signIns.delete(token), 600_000);
+  return Response.redirect(`https://api.x.com/oauth/authenticate?oauth_token=${token}`, 302);
+}
+async function finishSignIn(token: string, verifier: string, denied: string) {
+  const pending = signIns.get(token || denied);
   if (!pending) return signInFailed("This sign-in link is no longer valid. Start again from the Link screen.");
   const back = Response.redirect(`${PUBLIC_URL}/phone?session=${encodeURIComponent(pending.session)}`, 302);
   // Browsers sometimes load the callback twice; the second visit must not undo the first.
   if (signedIn.has(pending.owner)) return back;
-  if (denied || !code) return signInFailed("X did not grant access. Start again and choose Authorize.");
-  const headers: Record<string, string> = { "content-type": "application/x-www-form-urlencoded" };
-  if (X_CLIENT_SECRET) headers.authorization = "Basic " + Buffer.from(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`).toString("base64");
-  const tokenResponse = await fetch("https://api.x.com/2/oauth2/token", {
-    method: "POST",
-    headers,
-    body: new URLSearchParams({ code, grant_type: "authorization_code", client_id: X_CLIENT_ID!, redirect_uri: `${PUBLIC_URL}/auth/x/callback`, code_verifier: pending.verifier }),
-  });
-  const token = (await tokenResponse.json().catch(() => ({}))) as any;
-  if (!token.access_token) {
-    console.error(`x sign-in: token exchange ${tokenResponse.status} ${token.error ?? ""} ${token.error_description ?? ""}`);
-    return signInFailed("X did not accept the sign-in. Start again from the Link screen.");
-  }
-  const meResponse = await fetch("https://api.x.com/2/users/me", { headers: { authorization: `Bearer ${token.access_token}` } });
-  const me = (await meResponse.json().catch(() => ({}))) as any;
-  if (!me?.data?.username) {
-    console.error(`x sign-in: users/me ${meResponse.status} ${me.title ?? ""} ${me.detail ?? ""}`);
-    return signInFailed(meResponse.status === 402 || meResponse.status === 403 || meResponse.status === 429 ? "X would not share the account name with this app. Use the post option instead." : "X did not confirm the account. Start again from the Link screen.");
-  }
-  signedIn.set(pending.owner, "x:" + String(me.data.username).toLowerCase());
+  if (denied || !verifier) return signInFailed("X did not grant access. Start again and choose Authorize.");
+  const access = await oauthCall("https://api.x.com/oauth/access_token", { oauth_token: token, oauth_verifier: verifier });
+  const name = access.get("screen_name");
+  if (!name) return signInFailed("X did not confirm the account. Use the post option instead.");
+  signedIn.set(pending.owner, "x:" + name.toLowerCase());
   console.log(`x sign-in: confirmed a handle for ${pending.owner.slice(0, 4)}…`);
   return back;
 }
@@ -421,8 +421,8 @@ Bun.serve({
       if (!STREAM_TOKEN || url.searchParams.get("token") !== STREAM_TOKEN) return json({ error: "bad token" }, 401);
       return guarded(request.json().then((body: any) => ingestStream(body)));
     }
-    if (X_CLIENT_ID && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
-    if (X_CLIENT_ID && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("state") || "", url.searchParams.get("code") || "", url.searchParams.get("error") || "").catch(() => signInFailed("Could not reach X. Try again."));
+    if (X_CONSUMER_KEY && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
+    if (X_CONSUMER_KEY && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("oauth_token") || "", url.searchParams.get("oauth_verifier") || "", url.searchParams.get("denied") || "");
     if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
     if (url.pathname === "/v1/recent")
