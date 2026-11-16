@@ -20,6 +20,7 @@ const payer = anchor.web3.Keypair.fromSecretKey(
   Uint8Array.from(await Bun.file(process.env.PAYER_KEYPAIR || `${homedir()}/.config/solana/id.json`).json()),
 );
 const connection = new anchor.web3.Connection(PROGRAM_RPC, "confirmed");
+const program = new anchor.Program(idl as anchor.Idl, new anchor.AnchorProvider(connection, new anchor.Wallet(payer), { commitment: "confirmed" })) as any;
 
 const database = new Database(process.env.DATABASE || "thumbprint.sqlite");
 database.exec(`
@@ -105,10 +106,12 @@ export async function holdsGenesisToken(owner: string, sgtMint: string): Promise
   return (await isGenesisMint(sgtMint)) && (await heldTokens(owner, { mint: sgtMint })).length > 0;
 }
 
-// Finds the Genesis Token in a wallet, so the phone page knows which accounts to pass.
+// Finds the Genesis Token in a wallet. Found tokens are remembered to spare the public RPC.
+const knownTokens = new Map<string, { tokenAccount: string; mint: string }>();
 async function findGenesisToken(owner: string) {
+  if (knownTokens.has(owner)) return knownTokens.get(owner)!;
   for (const token of await heldTokens(owner, { programId: TOKEN_2022 })) {
-    if (await isGenesisMint(token.mint)) return token;
+    if (await isGenesisMint(token.mint)) return knownTokens.set(owner, token).get(owner)!;
   }
   // Dev only: lets a wallet without the token exercise the flow. ingest() also skips the check in dev.
   return DEV ? { tokenAccount: owner, mint: owner } : null;
@@ -118,26 +121,42 @@ async function device(owner: string) {
   new anchor.web3.PublicKey(owner); // throws on a malformed address
   const token = await findGenesisToken(owner);
   if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
-  const binding = database.query("SELECT handle FROM bindings WHERE sgt_mint = ?").get(token.mint) as any;
+  const [address] = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("device"), new anchor.web3.PublicKey(token.mint).toBuffer()],
+    program.programId,
+  );
+  const account = await program.account.device.fetchNullable(address);
   return {
     owner,
     sgtMint: token.mint,
-    sgtTokenAccount: token.tokenAccount,
-    handle: binding?.handle ?? null,
-    compromised: binding ? isCompromised(binding.handle) : false,
-    payer: payer.publicKey.toBase58(),
+    handle: account?.handle ?? null,
+    compromised: account ? isCompromised(account.handle) : false,
+    flagCount: account ? Number(account.flagCount) : 0,
   };
 }
 
-// The phone signed as owner; we add the fee payer signature and send. Refuses anything that
-// is not purely this program, since the payer's signature would otherwise be a blank cheque.
-async function submit(encoded: string) {
-  const transaction = anchor.web3.Transaction.from(Buffer.from(encoded, "base64"));
-  const ours = transaction.instructions.length > 0 && transaction.instructions.every((instruction) => instruction.programId.toBase58() === idl.address);
-  if (!ours || !transaction.feePayer?.equals(payer.publicKey)) return { error: "Unexpected transaction" };
-  transaction.partialSign(payer);
-  const signature = await connection.sendRawTransaction(transaction.serialize());
-  await connection.confirmTransaction(signature, "confirmed");
+const translate = (error: any) => new Error(error?.error?.errorMessage || error?.message || String(error));
+
+// The phone sends a message it signed; we wrap it in a transaction, pay for it and submit it.
+// The program verifies the signature against the message it expects, so this server cannot
+// record anything the device did not sign.
+async function act(body: { kind: string; owner: string; handle?: string; compromised?: boolean; message: string; signature: string }) {
+  const owner = new anchor.web3.PublicKey(body.owner);
+  const token = await findGenesisToken(body.owner);
+  if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
+  const accounts = { owner, sgtTokenAccount: new anchor.web3.PublicKey(token.tokenAccount), sgtMint: new anchor.web3.PublicKey(token.mint) };
+  const proof = anchor.web3.Ed25519Program.createInstructionWithPublicKey({
+    publicKey: owner.toBytes(),
+    message: Buffer.from(body.message),
+    signature: Buffer.from(body.signature, "base64"),
+  });
+  const method =
+    body.kind === "bind"
+      ? program.methods.bind(String(body.handle)).accounts({ payer: payer.publicKey, ...accounts })
+      : body.kind === "flag"
+        ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
+        : program.methods.attest().accounts(accounts);
+  const signature = await method.preInstructions([proof]).rpc().catch((error: unknown) => Promise.reject(translate(error)));
   const confirmed = await connection.getTransaction(signature, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
   await ingest(confirmed?.meta?.logMessages ?? [], signature, confirmed?.blockTime ?? Math.floor(Date.now() / 1000));
   return { ok: true, signature };
@@ -256,18 +275,33 @@ Bun.serve({
       return typed(await QRCode.toString(target, { type: "svg", margin: 0, errorCorrectionLevel: "M" }), "image/svg+xml");
     }
     if (url.pathname === "/v1/device") return guarded(device(url.searchParams.get("owner") || ""));
-    if (url.pathname === "/v1/blockhash") return guarded(connection.getLatestBlockhash());
-    if (request.method === "POST" && url.pathname === "/v1/submit") return guarded(request.json().then((body: any) => submit(body.transaction)));
+    if (request.method === "POST" && url.pathname === "/v1/act") return guarded(request.json().then((body: any) => act(body)));
     if (url.pathname === "/v1/paired") return json({ paired: phones.has(url.searchParams.get("session") || "") });
     if (url.pathname.startsWith("/p/")) return proofPage(url.pathname.slice(3));
-    // Dev preview bridge: a popup on this origin hands the extension source to the opener,
-    // so the real content script can be run on x.com without reloading the extension.
+    // Dev preview bridge: a popup on this origin hands the extension source to the page that
+    // opened it and then stands in for the background worker, so the real content script can run
+    // on x.com (whose CSP blocks localhost) without loading the unpacked extension.
     if (DEV && url.pathname === "/dev/bridge") {
       const read = (name: string) => Bun.file(new URL(`../extension/${name}`, import.meta.url)).text();
       const bundle = { css: await read("content.css"), js: (await read("shared.js")) + "\n" + (await read("content.js")) };
-      return new Response(`<script>opener.postMessage(${JSON.stringify(bundle).replace(/</g, "\\u003c")}, "*"); close();</script>`, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      const page = `<title>Thumbprint dev bridge</title><script>${await read("shared.js")}
+const session = new URLSearchParams(location.search).get("session");
+const post = (path, body) => fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((response) => response.json());
+opener.postMessage({ tpBundle: ${JSON.stringify(bundle).replace(/</g, "\\u003c")} }, "*");
+addEventListener("message", async (event) => {
+  const { tpCall, message } = event.data || {};
+  if (!tpCall) return;
+  let result = null;
+  try {
+    if (message.type === "lookup") result = await post("/v1/lookup", message.items);
+    if (message.type === "approve") result = await post("/v1/approve", { session, handle: message.handle, text: message.text, hash: await sha256Hex(message.text) });
+  } catch {
+    result = message.type === "approve" ? { ok: false, reason: "Server unreachable" } : null;
+  }
+  event.source.postMessage({ tpReply: tpCall, result }, event.origin);
+});
+</script>Keep this window open while previewing.`;
+      return typed(page, "text/html; charset=utf-8");
     }
     if (DEV && request.method === "POST" && url.pathname === "/dev/bind") {
       const body = (await request.json()) as any;

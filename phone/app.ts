@@ -1,22 +1,21 @@
-// Thumbprint phone page. Runs in Chrome on the Seeker and talks to the Seed Vault wallet
-// through Mobile Wallet Adapter. It hashes the post text itself and builds the transaction
-// itself, so the laptop can never get it to sign something the owner did not read.
+// Thumbprint phone page. Runs in Chrome on the Seeker and asks the Seed Vault wallet, through
+// Mobile Wallet Adapter, to sign a readable message. It builds that message itself from the text
+// it shows, so the laptop can never get the owner to sign something they did not read.
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
-import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { Buffer } from "buffer";
-import idl from "../server/idl.json";
-import "../extension/shared.js"; // sha256Hex
-(globalThis as any).Buffer ??= Buffer; // web3.js expects the Node global
+import { PublicKey } from "@solana/web3.js";
+import { attestMessage, bindMessage, flagMessage } from "./messages.ts";
 
-declare const sha256Hex: (text: string) => Promise<string>;
-
-type Device = { owner: string; sgtMint: string; sgtTokenAccount: string; handle: string | null; compromised: boolean; payer: string };
+type Device = { owner: string; sgtMint: string; handle: string | null; compromised: boolean; flagCount: number };
 type PostRequest = { handle: string; text: string };
+type Signed = { owner: string; signature: Uint8Array };
 
-const PROGRAM_ID = new PublicKey(idl.address);
 const IDENTITY = { name: "Thumbprint", uri: location.origin, icon: "/icon.svg" };
-const session = new URLSearchParams(location.search).get("session") || localStorage.getItem("session") || "";
+const query = new URLSearchParams(location.search);
+const session = query.get("session") || localStorage.getItem("session") || "";
 if (session) localStorage.setItem("session", session);
+// Test signer: a key held by this page instead of the Seed Vault, so the flow can be exercised
+// without a fingerprint. The server only accepts it when it runs in dev mode.
+const SOFTWARE = query.get("signer") === "software";
 
 const state = {
   device: JSON.parse(localStorage.getItem("device") || "null") as Device | null,
@@ -28,59 +27,8 @@ const state = {
   online: false,
 };
 
-// ---- Building instructions by hand: three instructions do not justify shipping Anchor to the phone ----
-
-const discriminator = (name: string) => Uint8Array.from(idl.instructions.find((instruction) => instruction.name === name)!.discriminator);
-const bytes = (...parts: Uint8Array[]) => {
-  const joined = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
-  let offset = 0;
-  for (const part of parts) {
-    joined.set(part, offset);
-    offset += part.length;
-  }
-  return joined;
-};
-const hexToBytes = (hex: string) => Uint8Array.from(hex.match(/../g)!.map((pair) => parseInt(pair, 16)));
-const pda = (...seeds: Uint8Array[]) => PublicKey.findProgramAddressSync(seeds, PROGRAM_ID)[0];
-const text = (value: string) => new TextEncoder().encode(value);
-const meta = (pubkey: PublicKey, isSigner = false, isWritable = false) => ({ pubkey, isSigner, isWritable });
-
-function deviceAccounts(device: Device) {
-  const owner = new PublicKey(device.owner);
-  const sgtMint = new PublicKey(device.sgtMint);
-  return { owner, sgtMint, sgtTokenAccount: new PublicKey(device.sgtTokenAccount), devicePda: pda(text("device"), sgtMint.toBytes()) };
-}
-
-function ownerInstruction(device: Device, name: "attest" | "set_compromised", data: Uint8Array) {
-  const accounts = deviceAccounts(device);
-  return new TransactionInstruction({
-    programId: PROGRAM_ID,
-    keys: [meta(accounts.owner, true), meta(accounts.sgtTokenAccount), meta(accounts.sgtMint), meta(accounts.devicePda)],
-    data: Buffer.from(bytes(discriminator(name), data)),
-  });
-}
-
-function bindInstruction(device: Device, handle: string) {
-  const accounts = deviceAccounts(device);
-  const handleBytes = text(handle);
-  const length = new Uint8Array(4);
-  new DataView(length.buffer).setUint32(0, handleBytes.length, true);
-  return new TransactionInstruction({
-    programId: PROGRAM_ID,
-    keys: [
-      meta(new PublicKey(device.payer), true, true),
-      meta(accounts.owner, true),
-      meta(accounts.sgtTokenAccount),
-      meta(accounts.sgtMint),
-      meta(accounts.devicePda, false, true),
-      meta(pda(text("handle"), handleBytes), false, true),
-      meta(SystemProgram.programId),
-    ],
-    data: Buffer.from(bytes(discriminator("bind"), length, handleBytes)),
-  });
-}
-
-// ---- Wallet ----
+const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+const fromBase64 = (encoded: string) => Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
 
 const api = async (path: string, body?: unknown) => {
   const response = await fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : undefined);
@@ -89,17 +37,38 @@ const api = async (path: string, body?: unknown) => {
   return result;
 };
 
-async function authorize(wallet: any) {
-  const result = await wallet.authorize({ chain: "solana:devnet", identity: IDENTITY, auth_token: localStorage.getItem("authToken") || undefined });
-  localStorage.setItem("authToken", result.auth_token);
-  const address = Uint8Array.from(atob(result.accounts[0].address), (char) => char.charCodeAt(0));
-  return new PublicKey(address).toBase58();
+// ---- Signers: both return the signer's address and, when given a message, its signature ----
+
+async function seedVault(message?: string): Promise<Signed> {
+  return transact(async (wallet) => {
+    const authorization = await wallet.authorize({ chain: "solana:mainnet", identity: IDENTITY, auth_token: localStorage.getItem("authToken") || undefined });
+    localStorage.setItem("authToken", authorization.auth_token);
+    const address = authorization.accounts[0].address;
+    const owner = new PublicKey(fromBase64(address)).toBase58();
+    if (!message) return { owner, signature: new Uint8Array() };
+    const [signed] = await wallet.signMessages({ addresses: [address], payloads: [new TextEncoder().encode(message)] });
+    return { owner, signature: signed.slice(-64) }; // wallets return the message followed by the signature
+  });
 }
 
-async function connect() {
-  const owner = await transact((wallet) => authorize(wallet));
-  await refreshDevice(owner);
+async function software(message?: string): Promise<Signed> {
+  const algorithm = { name: "Ed25519" };
+  let stored = localStorage.getItem("softwareKey");
+  if (!stored) {
+    const pair = (await crypto.subtle.generateKey(algorithm, true, ["sign", "verify"])) as CryptoKeyPair;
+    stored = JSON.stringify({
+      secret: base64(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))),
+      address: new PublicKey(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))).toBase58(),
+    });
+    localStorage.setItem("softwareKey", stored);
+  }
+  const { secret, address } = JSON.parse(stored);
+  if (!message) return { owner: address, signature: new Uint8Array() };
+  const key = await crypto.subtle.importKey("pkcs8", fromBase64(secret), algorithm, false, ["sign"]);
+  return { owner: address, signature: new Uint8Array(await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(message))) };
 }
+
+const signer = SOFTWARE ? software : seedVault;
 
 async function refreshDevice(owner = state.device?.owner) {
   if (!owner) return;
@@ -107,18 +76,12 @@ async function refreshDevice(owner = state.device?.owner) {
   localStorage.setItem("device", JSON.stringify(state.device));
 }
 
-// One wallet session, one fingerprint: the Seed Vault signs, the server pays the fee and submits.
-async function signAndSubmit(build: (device: Device) => TransactionInstruction) {
-  const device = state.device!;
-  const { blockhash } = await api("/v1/blockhash");
-  const transaction = new Transaction({ feePayer: new PublicKey(device.payer), recentBlockhash: blockhash }).add(build(device));
-  const signed = await transact(async (wallet) => {
-    const owner = await authorize(wallet);
-    if (owner !== device.owner) throw new Error("The wallet changed. Reconnect your Seeker.");
-    return (await wallet.signTransactions({ transactions: [transaction] }))[0];
-  });
-  const serialized = signed.serialize({ requireAllSignatures: false });
-  return api("/v1/submit", { transaction: btoa(String.fromCharCode(...serialized)) });
+// One wallet prompt, one fingerprint. The server pays for and submits the transaction; the
+// program checks this signature onchain, so the server cannot act without it.
+async function signAndSubmit(action: object, message: string) {
+  const signed = await signer(message);
+  if (signed.owner !== state.device!.owner) throw new Error("The wallet changed. Reconnect your Seeker.");
+  return api("/v1/act", { ...action, owner: signed.owner, message, signature: base64(signed.signature) });
 }
 
 // ---- Actions ----
@@ -137,21 +100,21 @@ async function run(label: string, action: () => Promise<void>) {
 }
 
 const actions: Record<string, (form?: HTMLFormElement) => void> = {
-  connect: () => run("Opening wallet", connect),
+  connect: () => run("Opening wallet", async () => refreshDevice((await signer()).owner)),
   link: (form) => {
     const handle = "x:" + new FormData(form!).get("handle")!.toString().trim().replace(/^@/, "").toLowerCase();
     run("Linking", async () => {
-      await signAndSubmit((device) => bindInstruction(device, handle));
+      await signAndSubmit({ kind: "bind", handle }, bindMessage(handle));
       await refreshDevice();
     });
   },
   approve: () =>
     run("Waiting for your fingerprint", async () => {
       const request = state.request!;
-      const hash = await sha256Hex(request.text);
-      await signAndSubmit((device) => ownerInstruction(device, "attest", hexToBytes(hash)));
+      await signAndSubmit({ kind: "attest" }, attestMessage(state.device!.handle!, request.text));
       state.lastSigned = request.text;
       state.request = null;
+      setTimeout(() => ((state.lastSigned = ""), render()), 4000);
     }),
   reject: () => {
     socket?.send(JSON.stringify({ type: "reject" }));
@@ -171,6 +134,7 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
   disconnect: () => {
     localStorage.removeItem("device");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("softwareKey");
     state.device = null;
     render();
   },
@@ -178,7 +142,9 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
 
 function setCompromised(compromised: boolean) {
   run("Waiting for your fingerprint", async () => {
-    await signAndSubmit((device) => ownerInstruction(device, "set_compromised", Uint8Array.of(compromised ? 1 : 0)));
+    await refreshDevice(); // the signed message carries the current counter
+    const device = state.device!;
+    await signAndSubmit({ kind: "flag", compromised }, flagMessage(device.handle!, compromised, device.flagCount));
     state.confirmingKill = false;
     await refreshDevice();
   });
@@ -259,8 +225,8 @@ function body(): string {
 function render() {
   const main = document.querySelector("main")!;
   main.innerHTML = state.busy
-    ? `<section class="hero"><div class="glyph pulse">${GLYPH}</div><h1>${state.busy}</h1><p>Double-tap the side button, then use your fingerprint.</p></section>`
-    : body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "");
+    ? `<section class="hero"><div class="glyph pulse">${GLYPH}</div><h1>${state.busy}</h1><p>${SOFTWARE ? "Signing with the test key." : "Double-tap the side button, then use your fingerprint."}</p></section>`
+    : body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "") + (SOFTWARE ? `<p class="badge">Test signer. No Seeker, no fingerprint.</p>` : "");
 }
 
 document.addEventListener("click", (event) => {
