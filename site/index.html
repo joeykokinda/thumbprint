@@ -148,15 +148,19 @@
   .xcompose footer { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eff3f4; }
   .xcompose .tp { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #cfe8dd; border-radius: 9999px; color: var(--accent); font-size: 13px; font-weight: 700; }
   .xcompose .go { padding: 8px 16px; border-radius: 9999px; background: #0f1419; color: #fff; font-size: 14px; font-weight: 700; opacity: 0.5; }
-  .scene { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 84px; align-items: center; padding: 8px 40px 8px 8px; }
+  .scene { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 120px; align-items: center; padding: 8px 40px 8px 8px; }
   .scene .x { height: 430px; overflow: hidden; }
   /* A Seeker: the fingerprint sensor is the button on its right edge. */
   .device { position: relative; width: 250px; height: 480px; margin: 0 auto; border: 7px solid #1b1c1a; border-radius: 40px; background: #000; box-shadow: 0 0 0 1.5px #4a4c47, 0 28px 50px -28px rgba(20, 20, 18, 0.6); }
   .device::before { content: ""; position: absolute; z-index: 1; top: 11px; left: 50%; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: #1b1c1a; }
   .device .side { position: absolute; right: -13px; top: 168px; width: 6px; height: 58px; border-radius: 3px; background: #4a4c47; transition: background 150ms, box-shadow 150ms; }
   .device.touch .side { background: var(--glow); box-shadow: 0 0 0 5px rgba(20, 241, 149, 0.22), 0 0 22px var(--glow); }
-  .device .thumb { position: absolute; right: -78px; top: 150px; width: 70px; height: 94px; border-radius: 36px 30px 30px 36px / 46px; background: linear-gradient(100deg, #f0cdb0, #d8a684); box-shadow: inset 8px 0 14px -8px rgba(120, 70, 40, 0.5); opacity: 0; transform: translateX(70px) rotate(-6deg); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms; }
-  .device.touch .thumb { opacity: 1; transform: translateX(0) rotate(-6deg); }
+  .device .thumb { position: absolute; right: -124px; top: 163px; width: 118px; height: 68px; opacity: 0; transform: translateX(80px); transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms; filter: drop-shadow(0 10px 12px rgba(20, 20, 18, 0.25)); }
+  .device .thumb svg { display: block; width: 100%; height: 100%; }
+  .device.touch .thumb { opacity: 1; transform: translateX(0); }
+  #scene-who { margin-left: auto; color: var(--alert); }
+  .scene-caption { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: baseline; min-height: 4.5em; margin: 28px 0 0; padding-top: 20px; border-top: 1px dashed var(--line); font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
+  .scene-caption.bad .label { color: var(--alert); }
   .screen { position: absolute; inset: 0; padding: 38px 16px 18px; display: flex; flex-direction: column; gap: 10px; color: #f1f0ea; font: 400 13px/1.4 var(--sans); text-align: left; animation: rise 240ms ease-out; }
   .screen svg { width: 40px; height: 40px; margin: 34px 0 10px; color: var(--glow); }
   .screen.bad svg, .screen.bad h5 { color: #ff5a64; }
@@ -258,8 +262,9 @@
     <div class="pad" style="padding-bottom:56px">
       <div class="scene" aria-label="Animated walkthrough: a post approved by fingerprint, then a hijacked account">
         <div id="hero-phone"></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" id="scene-feed"></div></figure>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren<span id="scene-who"></span></div><div class="x" id="scene-feed"></div></figure>
       </div>
+      <p class="scene-caption"><span class="label" id="scene-step"></span><span id="scene-say"></span></p>
     </div>
     <div class="index" style="border-top:1px solid var(--line)">
       <div><span class="label"><i class="sq"></i>01 / Write</span><p>Post from X like you always do.</p></div>
@@ -462,7 +467,10 @@
   function makePhone(root) {
     root.className = "device";
     const screen = el("div", "screen");
-    root.append(screen, el("i", "side"), el("i", "thumb"));
+    const thumb = el("i", "thumb");
+    // A thumb reaching in from the right, nail toward the sensor.
+    thumb.innerHTML = '<svg viewBox="0 0 118 68" aria-hidden="true"><path d="M118 8H46C22 8 4 18 4 34s18 26 42 26h72z" fill="#e2b08c"/><path d="M118 8H46C30 8 17 12 10 20h108z" fill="#edc4a4"/><path d="M10 34c0-10 9-17 22-17h9a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4h-9c-13 0-22-7-22-17z" fill="#f7dfd0"/><path d="M14 34c0-7 7-12 17-12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.7"/><path d="M72 20c-3 6-3 22 0 28M82 21c-2 6-2 20 0 26" fill="none" stroke="#c48f6c" stroke-width="2" stroke-linecap="round"/></svg>';
+    root.append(screen, el("i", "side"), thumb);
     const show = (kind, html) => { root.classList.remove("touch"); screen.className = "screen " + kind; screen.innerHTML = html; };
     return {
       touch: () => root.classList.add("touch"),
@@ -481,19 +489,25 @@
 
   // Step 02: write, thumb on the sensor, posted.
   const stepPhone = makePhone(document.getElementById("step-phone"));
-  loop([[() => stepPhone.ask(POSTS.bag), 1400], [stepPhone.touch, 900], [stepPhone.done, 1500, true]]);
+  loop([[() => stepPhone.ask(POSTS.bag), 2400], [stepPhone.touch, 1600], [stepPhone.done, 2400, true]]);
 
-  // Hero: the owner posts with a thumb; the attacker cannot; the owner warns everyone.
+  // Hero: told as a story, one beat at a time, with a sentence under it.
   const feed = document.getElementById("scene-feed");
+  const who = document.getElementById("scene-who");
+  const stepLabel = document.getElementById("scene-step");
+  const sentence = document.getElementById("scene-say");
   const phone = makePhone(document.getElementById("hero-phone"));
+  const say = (number, text, bad) => { stepLabel.textContent = "0" + number + " / 06"; sentence.textContent = text; sentence.parentNode.classList.toggle("bad", Boolean(bad)); who.textContent = bad && number < 6 ? "attacker is logged in" : ""; };
   loop([
-    [() => { feed.replaceChildren(post(POSTS.rule), post(POSTS.call)); phone.ask(POSTS.bag); }, 1400],
-    [phone.touch, 900],
-    [() => { phone.done(); feed.prepend(post(POSTS.bag)); }, 1700, true],
-    [() => { phone.idle("An attacker is posting. This phone was never asked."); feed.prepend(post(POSTS.drainer)); }, 2800, true],
-    [phone.confirm, 1200],
-    [phone.touch, 900],
-    [() => { phone.flagged(); feed.replaceChildren(banner(), post(POSTS.drainer, { flagged: true }), post(POSTS.bag)); feed.firstChild.style.margin = "12px 16px"; }, 3000],
+    [() => { feed.replaceChildren(post(POSTS.rule), post(POSTS.call)); phone.ask(POSTS.bag); say(1, "Maren writes a post. Her Seeker shows her the exact words before anything goes out."); }, 3600],
+    [() => { phone.touch(); say(2, "She touches the fingerprint sensor. Only her finger unlocks the key inside the phone. No password or PIN can."); }, 3000],
+    [() => { phone.done(); feed.prepend(post(POSTS.bag)); say(3, "The post goes out with a green mark. Anyone can check on Solana that her phone approved it."); }, 4200, true],
+    [() => { phone.idle("No post is waiting."); say(4, "A hacker SIM-swaps her and logs in to her X account from his own laptop.", true); }, 3800],
+    [() => { phone.idle("An attacker is posting. This phone was never asked."); feed.prepend(post(POSTS.drainer)); say(4, "He posts a fake presale. He does not have her phone, so there is no fingerprint and no mark. Readers get a warning and the link is blocked.", true); }, 6000, true],
+    [() => { phone.confirm(); say(5, "Maren still has her phone. She reports the account as hacked.", true); }, 3200],
+    [() => { phone.touch(); say(5, "One touch of the sensor signs the report.", true); }, 2400],
+    [() => { phone.flagged(); feed.replaceChildren(banner(), post(POSTS.drainer, { flagged: true }), post(POSTS.bag)); feed.firstChild.style.margin = "12px 16px"; say(5, "Every reader now sees the warning on her profile, with a link to the signed report. The hacker cannot remove it.", true); }, 6000],
+    [() => { phone.idle("Account recovered."); feed.replaceChildren(post(POSTS.bag), post(POSTS.rule), post(POSTS.call)); say(6, "When she gets the account back, she clears the warning the same way."); }, 4200],
   ]);
 
   // ---- Dot-matrix fingerprint: ridges drawn as characters, with a scan line passing over ----
