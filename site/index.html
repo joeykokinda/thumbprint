@@ -170,6 +170,10 @@
   .screen .btn-app.danger { background: #ff5a64; color: #fff; }
   .device.touch .btn-app { opacity: 0.55; }
   @media (max-width: 760px) { .scene { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 0; } }
+  .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding-top: 40px; padding-bottom: 48px; }
+  .shots figcaption { margin-top: 16px; text-align: center; }
+  .shots .window.phone { margin: 0 auto; }
+  @media (max-width: 760px) { .shots { grid-template-columns: minmax(0, 1fr); } }
   .steps { border-top: 1px solid var(--line); }
   .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 40px; border-bottom: 1px solid var(--line); }
   .step:last-child { border-bottom: 0; }
@@ -301,6 +305,15 @@
         <div><span class="label"><span class="num">05</span>Kill switch</span><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session.</p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="banner"></div></figure>
       </div>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>The app</span><span>Captured on a <b>real Seeker</b></span><span>Signer: <b>fingerprint only</b></span></div>
+    <div class="shots pad reveal">
+      <figure style="margin:0"><div class="window phone"><img src="/site/app-write.png" alt="The Thumbprint app on a Seeker with a post typed and an Approve and post button" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Write a post</figcaption></figure>
+      <figure style="margin:0"><div class="window phone"><img src="/site/app-approve.png" alt="The app showing a post sent from the laptop with an Approve with fingerprint button" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Approve one from your laptop</figcaption></figure>
+      <figure style="margin:0"><div class="window phone"><img src="/site/app-kill.png" alt="The app asking to report the account as compromised" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Kill switch</figcaption></figure>
     </div>
   </div>
 
