@@ -110,6 +110,59 @@
   .print-wrap { display: grid; place-items: center; padding: 28px 12px; overflow: hidden; }
 
   /* Steps */
+  /* Mock X posts and the hero scene. Illustrations of what the extension draws on x.com. */
+  .x { background: #fff; color: #0f1419; font: 400 15px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .xpost { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid #eff3f4; animation: rise 320ms ease-out; }
+  .xav { width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--glow); display: grid; place-items: center; font: 600 15px/1 var(--mono); }
+  .xname { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
+  .xname b { font-weight: 700; }
+  .xname span { color: #536471; overflow: hidden; text-overflow: ellipsis; }
+  .xmark { flex: none; width: 17px; height: 17px; color: var(--accent); }
+  .xmark svg { display: block; width: 100%; height: 100%; }
+  .xmark.bad { color: var(--alert); }
+  .xtext { margin-top: 2px; overflow-wrap: anywhere; }
+  .xtext s { color: #536471; }
+  .xchip { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid #f0c9be; border-radius: 9999px; color: var(--alert); font-size: 12px; font-weight: 600; }
+  .xnote { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid #f3d9d1; border-left: 3px solid var(--alert); border-radius: 8px; color: #536471; font-size: 13px; }
+  .xnote strong { color: var(--alert); margin-right: 6px; }
+  .xnote a { color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .xacts { display: flex; gap: 56px; margin-top: 10px; }
+  .xacts i { width: 15px; height: 15px; border: 1.5px solid #9aa5ad; border-radius: 4px; }
+  .xacts i:nth-child(odd) { border-radius: 50%; }
+  .xcard { margin: 8px 0 2px; padding: 12px 14px; max-width: 290px; border: 1px solid #e3e8ea; border-radius: 14px; box-shadow: 0 8px 28px -12px rgba(15, 20, 25, 0.35); font-size: 13px; }
+  .xcard b { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .xcard p { margin: 4px 0 8px; color: #536471; max-width: none; }
+  .xcard dl { margin: 0; padding: 8px 0; border-top: 1px solid #eff3f4; border-bottom: 1px solid #eff3f4; }
+  .xcard dl div { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .xcard dt { color: #536471; }
+  .xcard dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .xcard a { display: block; margin-top: 8px; color: var(--accent); font-weight: 600; }
+  .xprofile { padding: 16px; border-bottom: 1px solid #eff3f4; }
+  .xprofile .xav { width: 64px; height: 64px; font-size: 24px; margin-bottom: 10px; }
+  .xprofile h4 { margin: 0; font: 800 19px/1.2 system-ui, sans-serif; }
+  .xprofile small { color: #536471; font-size: 14px; }
+  .xcompose { padding: 14px 16px; }
+  .xcompose .xtext { font-size: 18px; min-height: 64px; }
+  .xcompose footer { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eff3f4; }
+  .xcompose .tp { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid #cfe8dd; border-radius: 9999px; color: var(--accent); font-size: 13px; font-weight: 700; }
+  .xcompose .go { padding: 8px 16px; border-radius: 9999px; background: #0f1419; color: #fff; font-size: 14px; font-weight: 700; opacity: 0.5; }
+  .scene { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
+  .scene-bar { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px dashed var(--line); }
+  .scene-bar.bad #scene-phase, .scene-bar.bad .sq { color: var(--alert); }
+  .scene-body { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; align-items: start; padding: 24px; }
+  .scene .x { height: 400px; overflow: hidden; }
+  .sphone { height: 446px; padding: 22px 16px 16px; border: 6px solid var(--ink); border-radius: 28px; background: #000; color: #e7e9ea; display: flex; flex-direction: column; gap: 10px; font: 400 13px/1.4 system-ui, sans-serif; text-align: center; }
+  .sphone svg { width: 44px; height: 44px; margin: 26px auto 8px; color: var(--glow); }
+  .sphone.bad svg, .sphone.bad h5 { color: #ff5a64; }
+  .sphone.pulse svg { animation: blink 1s ease-in-out infinite; }
+  .sphone h5 { margin: 0; font: 700 16px/1.25 system-ui, sans-serif; }
+  .sphone p { margin: 0; color: #71767b; }
+  .sphone blockquote { margin: 0; padding: 12px; border: 1px solid #2f3336; border-radius: 12px; background: #16181c; text-align: left; font-size: 14px; }
+  .sphone .eyebrow { color: var(--glow); font-weight: 700; text-align: left; }
+  .sphone .btn-app { margin-top: auto; padding: 12px; border-radius: 9999px; background: var(--glow); color: #000; font-weight: 700; }
+  .sphone .btn-app.quiet { background: none; border: 1px solid #2f3336; color: #ff5a64; }
+  .sphone .btn-app.danger { background: #ff5a64; color: #fff; }
+  @media (max-width: 760px) { .scene-body { grid-template-columns: minmax(0, 1fr); } .sphone { height: auto; min-height: 300px; width: 250px; margin: 0 auto; } }
   .steps { border-top: 1px solid var(--line); }
   .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 40px; border-bottom: 1px solid var(--line); }
   .step:last-child { border-bottom: 0; }
@@ -192,11 +245,11 @@
       </div>
     </div>
     <div class="pad" style="padding-bottom:56px">
-      <div class="term" aria-label="Animated walkthrough of a signed post and a hijacked post">
-        <div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span class="term-title">thumbprint · @solproject · devnet</span><span class="playing">PLAYING</span></div>
-        <div class="sim">
-          <div class="sim-col"><div class="sim-head"><span>EVENTS</span><span id="sim-phase">SIGNING</span></div><ul class="log" id="log"></ul></div>
-          <div class="sim-col"><div class="sim-head"><span>TIMELINE</span><span id="sim-count">0 SIGNED · 0 FLAGGED</span></div><ul class="rows" id="rows"></ul></div>
+      <div class="scene" aria-label="Animated walkthrough: a signed post, then a hijacked account">
+        <div class="scene-bar label"><span><i class="sq"></i><span id="scene-phase">Signing</span></span><span id="scene-note"></span></div>
+        <div class="scene-body">
+          <div class="sphone" id="sphone"></div>
+          <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" id="feed"></div></figure>
         </div>
       </div>
     </div>
@@ -226,7 +279,7 @@
     <div class="steps">
       <div class="step reveal">
         <div><span class="label"><span class="num">01</span>Write</span><h3>Post like you always do</h3><p>A small button sits next to Post in X's own composer. Press it and the draft goes to your Seeker. Nothing else about X changes.</p></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / compose</div><img src="/site/composer.png" alt="X's composer with the Thumbprint button showing Check your phone" loading="lazy" width="610" height="300"></figure>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / compose</div><div class="x" data-mock="compose"></div></figure>
       </div>
       <div class="step reveal">
         <div><span class="label"><span class="num">02</span>Approve</span><h3>Read it on your phone, then use your fingerprint</h3><p>The Seeker shows the words you are about to publish. A key locked inside the phone's secure hardware signs them, and it works only with your fingerprint. No password or PIN can stand in, so nothing on your laptop and no stolen login can approve a post for you. You can also write the post right in the app.</p></div>
@@ -234,15 +287,15 @@
       </div>
       <div class="step reveal">
         <div><span class="label"><span class="num">03</span>Read</span><h3>Followers see the mark</h3><p>Approved posts carry a fingerprint next to the name, the same size as the verified check. The card shows when it was approved, on which device, and links to the record on Solana.</p></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / timeline</div><img src="/site/signed.png" alt="A post on X with the Thumbprint mark and a card reading Signed with fingerprint" loading="lazy" width="600" height="360"></figure>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" data-mock="signed"></div></figure>
       </div>
       <div class="step alert reveal">
         <div><span class="label"><span class="num">04</span>Hijacked</span><h3>A post without the phone stands out</h3><p>If an account that signs its posts publishes one that is not approved, it is flagged in red and any links in it are blocked until the reader chooses to open them.</p></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / timeline</div><img src="/site/compromised.png" alt="Two signed posts and one flagged in red as not approved on the owner's device" loading="lazy" width="600" height="334"></figure>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" data-mock="hijacked"></div></figure>
       </div>
       <div class="step alert reveal">
         <div><span class="label"><span class="num">05</span>Kill switch</span><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session.</p></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / profile</div><img src="/site/banner.png" alt="An X profile with a red Account compromised banner under the name" loading="lazy" width="600" height="270"></figure>
+        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / meridianfi</div><div class="x" data-mock="banner"></div></figure>
       </div>
     </div>
   </div>
@@ -313,45 +366,96 @@
     return node;
   };
 
-  // ---- Hero simulation: one signed post, then a hijack, on a loop ----
-  const SCRIPT = [
-    { phase: "SIGNING", log: ["composer", "draft", "Staking is live. Only use the link in our bio."] },
-    { log: ["seeker", "wait", "showing the exact text, waiting for a fingerprint"], kind: "wait" },
-    { log: ["seeker", "signed", "fingerprint matched, key unlocked"], kind: "ok" },
-    { log: ["solana", "attest", "program checked the signature, hash recorded"], kind: "ok" },
-    { log: ["x.com", "posted", "Post pressed for the owner"], row: { text: "Staking is live. Only use the link in our bio.", state: "SIGNED" } },
-    { phase: "HIJACKED", log: ["x.com", "login", "SIM swap: new session from an unknown laptop"], kind: "bad" },
-    { log: ["x.com", "posted", "surprise airdrop, connect wallet at sol-claim.xyz"], kind: "bad", row: { text: "Surprise airdrop for holders. 2 hours only. Connect your wallet:", link: "sol-claim.xyz", state: "NOT SIGNED" } },
-    { log: ["reader", "blocked", "no fingerprint behind this post, link blocked before anyone clicks"], kind: "bad" },
-    { phase: "KILL SWITCH", log: ["seeker", "report", "owner taps: my account was hacked"], kind: "wait" },
-    { log: ["solana", "flagged", "compromised, visible to every reader"], kind: "bad" },
-    { phase: "RECOVERED", log: ["seeker", "recover", "owner has the account back"], kind: "ok" },
-  ];
-  const log = document.getElementById("log");
-  const rows = document.getElementById("rows");
-  const phase = document.getElementById("sim-phase");
-  const count = document.getElementById("sim-count");
-  function play(index) {
-    if (index === 0) { log.replaceChildren(); rows.replaceChildren(); }
-    const step = SCRIPT[index];
-    if (step.phase) phase.textContent = step.phase;
-    const line = el("li");
-    line.append(el("span", "src", "[" + step.log[0] + "]"), el("span", step.kind || "", step.log[1]), el("span", "", step.log[2]));
-    log.append(line);
-    if (step.row) {
-      const row = el("li", step.row.link ? "bad" : "");
-      const who = el("div", "who");
-      who.append(el("span", "", "@SOLPROJECT"), el("span", "state", step.row.state));
-      const text = el("div", "text", step.row.text + " ");
-      if (step.row.link) text.append(el("s", "", step.row.link));
-      row.append(who, text);
-      rows.append(row);
-      count.textContent = rows.querySelectorAll("li:not(.bad)").length + " SIGNED · " + rows.querySelectorAll(".bad").length + " FLAGGED";
+  // ---- Mock posts: what the extension draws on x.com, for a made-up project account ----
+  const PRINT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>';
+  const POSTS = {
+    staking: { time: "2m", text: "Staking v2 is live. The only link is the one in our bio. We will never DM you a claim link.", signed: true },
+    treasury: { time: "1h", text: "Treasury update: 40% of protocol fees now go to buybacks. Full report Friday.", signed: true },
+    audit: { time: "3h", text: "Audit passed with zero criticals. Mainnet contracts are verified and unchanged since launch.", signed: true },
+    drainer: { time: "now", text: "Surprise airdrop for MRD holders. 2 hours only. Connect your wallet to claim:", link: "meridian-claim.xyz", signed: false },
+  };
+  function post(item, options = {}) {
+    const node = el("div", "xpost");
+    const body = el("div");
+    const name = el("div", "xname");
+    const mark = el("span", "xmark" + (item.signed ? "" : " bad"));
+    mark.innerHTML = PRINT;
+    name.append(el("b", "", "Meridian"), mark, el("span", "", "@meridianfi · " + item.time));
+    body.append(name);
+    if (!item.signed) {
+      const note = el("div", "xnote");
+      note.append(el("strong", "", options.flagged ? "Account compromised" : "Not signed"), options.flagged ? "The owner reported this account as taken over. This post was not approved on their Seeker." : "This account approves its posts with a fingerprint. This one was not approved.");
+      body.append(note);
     }
-    if (still && index < SCRIPT.length - 1) return play(index + 1);
-    if (!still) setTimeout(() => play((index + 1) % SCRIPT.length), index === SCRIPT.length - 1 ? 4200 : 1150);
+    const text = el("div", "xtext", item.text + " ");
+    if (item.link) text.append(el("s", "", item.link), el("span", "xchip", "Link blocked"));
+    body.append(text);
+    if (options.card) {
+      const card = el("div", "xcard");
+      card.innerHTML = "<b><span class='xmark'>" + PRINT + "</span>Signed with fingerprint</b><p>The account owner approved this exact post on their Seeker.</p><dl><div><dt>Approved</dt><dd>Today, 9:41 AM</dd></div><div><dt>Device</dt><dd>Seeker · CVh4…Sj8r</dd></div><div><dt>Last 24h</dt><dd>3 posts approved</dd></div></dl><a>View proof ↗</a>";
+      body.append(card);
+    }
+    const acts = el("div", "xacts");
+    acts.append(el("i"), el("i"), el("i"), el("i"));
+    body.append(acts);
+    node.append(el("div", "xav", "M"), body);
+    return node;
   }
-  play(0);
+  function banner() {
+    const note = el("div", "xnote");
+    note.append(el("strong", "", "Account compromised"), "The owner reported from their own Seeker that @meridianfi was taken over. Do not trust new posts or links until they recover it. Signed with the owner's fingerprint and recorded on Solana. ", el("a", "", "View the signed report ↗"));
+    return note;
+  }
+  const MOCKS = {
+    compose(root) {
+      const box = el("div", "xcompose");
+      const footer = el("footer");
+      const button = el("span", "tp");
+      button.innerHTML = "<span class='xmark'>" + PRINT + "</span>Check your phone";
+      footer.append(button, el("span", "go", "Post"));
+      box.append(el("div", "xtext", POSTS.staking.text), footer);
+      root.append(box);
+    },
+    signed(root) { root.append(post(POSTS.staking, { card: true }), post(POSTS.treasury)); },
+    hijacked(root) { root.append(post(POSTS.drainer), post(POSTS.staking), post(POSTS.treasury)); },
+    banner(root) {
+      const profile = el("div", "xprofile");
+      profile.append(el("div", "xav", "M"), el("h4", "", "Meridian"), el("small", "", "@meridianfi"), banner());
+      root.append(profile, post(POSTS.drainer, { flagged: true }));
+    },
+  };
+  document.querySelectorAll("[data-mock]").forEach((root) => MOCKS[root.dataset.mock](root));
+
+  // ---- Hero scene: the phone approves, the timeline shows it, then the account is hijacked ----
+  const feed = document.getElementById("feed");
+  const phone = document.getElementById("sphone");
+  const phaseLabel = document.getElementById("scene-phase");
+  const sceneNote = document.getElementById("scene-note");
+  const screen = (kind, html) => { phone.className = "sphone " + kind; phone.innerHTML = html; };
+  const idle = (line) => screen("", PRINT + "<h5>Protecting @meridianfi</h5><p>" + line + "</p><div class='btn-app quiet'>My account was hacked</div>");
+  const ask = (item) => screen("", "<div class='eyebrow'>Post as @meridianfi</div><blockquote>" + item.text + "</blockquote><p>This exact text is what your fingerprint approves.</p><div class='btn-app'>Approve with fingerprint</div>");
+  const touch = () => screen("pulse", PRINT + "<h5>Touch the sensor</h5><p>Only your fingerprint unlocks the key.</p>");
+  const phase = (name, note, bad) => { phaseLabel.textContent = name; sceneNote.textContent = note; phaseLabel.closest(".scene-bar").classList.toggle("bad", Boolean(bad)); };
+  const SCENE = [
+    () => { feed.replaceChildren(post(POSTS.audit)); phase("Signing", "The owner writes a post"); ask(POSTS.treasury); },
+    () => touch(),
+    () => { idle("Signed. Your post is going out."); feed.prepend(post(POSTS.treasury)); phase("Signing", "Approved on Solana, marked for every reader"); },
+    () => ask(POSTS.staking),
+    () => touch(),
+    () => { idle("Signed. Your post is going out."); feed.prepend(post(POSTS.staking)); },
+    () => { phase("Hijacked", "SIM swap. The attacker logs in from a laptop", true); idle("Waiting for your next post."); },
+    () => { feed.prepend(post(POSTS.drainer)); phase("Hijacked", "The phone was never asked, so the post is flagged and its link blocked", true); },
+    () => { phase("Kill switch", "The owner still holds the phone", true); screen("bad", PRINT + "<h5>Report @meridianfi as compromised?</h5><p>Every reader sees a warning right away.</p><div class='btn-app danger'>Yes, warn everyone</div>"); },
+    () => touch(),
+    () => { screen("bad", PRINT + "<h5>@meridianfi is marked compromised</h5><p>Everyone using Thumbprint sees the warning.</p><div class='btn-app'>I have my account back</div>"); feed.replaceChildren(banner(), post(POSTS.drainer, { flagged: true }), post(POSTS.staking)); feed.firstChild.style.margin = "12px 16px"; phase("Kill switch", "Broadcast to every reader, with the signed report", true); },
+    () => { phase("Recovered", "The owner has the account back"); idle("Account recovered."); feed.replaceChildren(post(POSTS.staking), post(POSTS.treasury), post(POSTS.audit)); },
+  ];
+  const PAUSES = [1800, 1300, 1900, 1800, 1300, 1900, 1900, 3200, 2200, 1300, 3800, 3000];
+  function playScene(index) {
+    SCENE[index]();
+    if (!still) setTimeout(() => playScene((index + 1) % SCENE.length), PAUSES[index]);
+  }
+  if (still) { SCENE[0](); SCENE[2](); SCENE[5](); SCENE[7](); } else playScene(0);
 
   // ---- Dot-matrix fingerprint: ridges drawn as characters, with a scan line passing over ----
   const COLUMNS = 46, LINES = 34;
