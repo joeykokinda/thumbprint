@@ -165,7 +165,28 @@
   .device .thumb { position: absolute; right: -124px; top: 163px; width: 118px; height: 68px; opacity: 0; transform: translateX(80px); transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms; filter: drop-shadow(0 10px 12px rgba(20, 20, 18, 0.25)); }
   .device .thumb svg { display: block; width: 100%; height: 100%; }
   .device.touch .thumb { opacity: 1; transform: translateX(0); }
-  #scene-who { margin-left: auto; color: var(--alert); }
+  #scene-window { position: relative; transition: border-color 300ms, box-shadow 300ms; }
+  #scene-who { margin-left: auto; }
+  #scene-window.owned { border-color: var(--alert); box-shadow: 0 0 0 3px rgba(210, 63, 28, 0.16), 0 18px 40px -22px rgba(210, 63, 28, 0.7); }
+  #scene-window.owned .bar { background: #f6e3de; color: var(--alert); }
+  #scene-window.owned .bar .dots i { background: #e3a595; }
+  #scene-window.owned #scene-who { padding: 4px 8px; background: var(--alert); color: #fff; }
+  #scene-window.hacking { animation: shake 460ms ease-in-out; }
+  @keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+  .hack { position: absolute; inset: 31px 0 0; display: grid; place-content: center; padding: 24px; background: rgba(18, 8, 6, 0.93); opacity: 0; pointer-events: none; transition: opacity 280ms; }
+  #scene-window.hacking .hack { opacity: 1; }
+  .hack-card { width: min(340px, 100%); padding: 22px; border: 1px solid #7a2a1c; background: #1c0c09; color: #f1f0ea; transform: translateY(8px); transition: transform 280ms; }
+  #scene-window.hacking .hack-card { transform: none; }
+  .hack-card .label { color: #ff6a4d; }
+  .hack-card h4 { margin: 12px 0 14px; font: 700 24px/1.05 var(--sans); letter-spacing: -0.03em; text-transform: uppercase; }
+  .hack-card dl { margin: 0; border-top: 1px dashed #4a2018; }
+  .hack-card dl div { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px dashed #4a2018; font: 400 12px/1.4 var(--mono); }
+  .hack-card dt { color: #b08a80; text-transform: uppercase; letter-spacing: 0.1em; }
+  .hack-card dd { margin: 0; text-align: right; }
+  .hack-card p { margin: 14px 0 0; color: #ff6a4d; font-size: 15px; }
+  .screen .toast { padding: 10px 12px; border: 1px solid #4a2018; border-radius: 10px; background: #1c0c09; font-size: 11px; line-height: 1.35; animation: rise 300ms ease-out; }
+  .screen .toast b { display: block; color: #ff6a4d; font: 600 10px/1.6 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .screen .toast + svg { margin-top: 14px; }
   .scene-caption { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: baseline; min-height: 4.5em; margin: 28px 0 0; padding-top: 20px; border-top: 1px dashed var(--line); font-size: 22px; line-height: 1.3; letter-spacing: -0.01em; }
   .scene-caption.bad .label { color: var(--alert); }
   .screen { position: absolute; inset: 0; padding: 38px 16px 18px; display: flex; flex-direction: column; gap: 10px; color: #f1f0ea; font: 400 13px/1.4 var(--sans); text-align: left; animation: rise 240ms ease-out; }
@@ -269,7 +290,14 @@
     <div class="pad" style="padding-bottom:56px">
       <div class="scene" aria-label="Animated walkthrough: a post approved by fingerprint, then a hijacked account">
         <div id="hero-phone"></div>
-        <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren<span id="scene-who"></span></div><div class="x" id="scene-feed"></div></figure>
+        <figure class="window" id="scene-window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren<span id="scene-who"></span></div><div class="x" id="scene-feed"></div>
+          <div class="hack" aria-hidden="true"><div class="hack-card">
+            <span class="label"><i class="sq alert"></i>Account takeover</span>
+            <h4>New login to @0xmaren</h4>
+            <dl><div><dt>How</dt><dd>SIM swap, password reset by text</dd></div><div><dt>Device</dt><dd>Unknown laptop</dd></div><div><dt>Her Seeker</dt><dd>Not involved</dd></div></dl>
+            <p>The attacker can now post as her.</p>
+          </div></div>
+        </figure>
       </div>
       <p class="scene-caption"><span class="label" id="scene-step"></span><span id="scene-say"></span></p>
     </div>
@@ -404,21 +432,20 @@
   const avatar = () => { const node = el("div", "xav"); node.innerHTML = AVATAR; return node; };
   const NAME = "Maren", HANDLE = "@0xmaren";
   const POSTS = {
-    bag: { time: "now", text: "Not selling. Added to my SOL bag this morning. Same thesis as last cycle.", signed: true },
-    rule: { time: "2h", text: "Reminder: I will never DM you first, and I do not have a token. If a post has no green mark, it is not me.", signed: true },
-    call: { time: "5h", text: "Rotated out of memes into majors. Thread tomorrow on why.", signed: true },
-    drainer: { time: "now", text: "It's finally here. $MAREN presale is live for 1 hour. Send SOL to get in early:", link: "maren-presale.xyz", signed: false },
+    bag: { time: "now", stats: ["12", "41", "386", "9.2K"], text: "Not selling. Added to my SOL bag this morning. Same thesis as last cycle.", signed: true },
+    rule: { time: "2h", stats: ["214", "1.8K", "6.4K", "412K"], text: "Reminder: I will never DM you first, and I do not have a token. If a post has no green mark, it is not me.", signed: true },
+    call: { time: "5h", stats: ["97", "305", "2.9K", "188K"], text: "Rotated out of memes into majors. Thread tomorrow on why.", signed: true },
+    drainer: { time: "now", stats: ["3", "19", "54", "2.1K"], text: "It's finally here. $MAREN presale is live for 1 hour. Send SOL to get in early:", link: "maren-presale.xyz", signed: false },
   };
   // X's row under a post: reply, repost, like, views, bookmark, share.
   const ACTIONS = [
-    ["M4 11.5A7.5 7.5 0 0 1 11.5 4h1a7.5 7.5 0 0 1 3.6 14.1L11 21v-2.5a7.5 7.5 0 0 1-7-7z", "48"],
-    ["M4.5 8.5 7 6l2.5 2.5M7 6v9a2 2 0 0 0 2 2h4M19.5 15.5 17 18l-2.5-2.5M17 18V9a2 2 0 0 0-2-2h-4", "212"],
-    ["M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z", "3.1K"],
-    ["M5 20v-6M10 20V9M15 20v-9M20 20V4", "88K"],
-    ["M7 4h10v16l-5-4-5 4z", ""],
-    ["M12 15V4M8 8l4-4 4 4M5 14v5h14v-5", ""],
+    "M4 11.5A7.5 7.5 0 0 1 11.5 4h1a7.5 7.5 0 0 1 3.6 14.1L11 21v-2.5a7.5 7.5 0 0 1-7-7z",
+    "M4.5 8.5 7 6l2.5 2.5M7 6v9a2 2 0 0 0 2 2h4M19.5 15.5 17 18l-2.5-2.5M17 18V9a2 2 0 0 0-2-2h-4",
+    "M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z",
+    "M5 20v-6M10 20V9M15 20v-9M20 20V4",
+    "M7 4h10v16l-5-4-5 4z",
+    "M12 15V4M8 8l4-4 4 4M5 14v5h14v-5",
   ];
-  const ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17v.5"/></svg>';
   function post(item, options = {}) {
     const node = el("div", "xpost");
     const body = el("div");
@@ -447,7 +474,7 @@
       body.append(card);
     }
     const acts = el("div", "xacts");
-    acts.innerHTML = ACTIONS.map(([path, count]) => `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>${item.signed === false && count ? "" : count}</span>`).join("");
+    acts.innerHTML = ACTIONS.map((path, index) => `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${path}"/></svg>${item.stats[index] || ""}</span>`).join("");
     body.append(acts);
     node.append(avatar(), body);
     return node;
@@ -490,7 +517,7 @@
       touch: () => root.classList.add("touch"),
       ask: (item) => show("", "<div class='eyebrow'>Post as " + HANDLE + "</div><blockquote>" + item.text + "</blockquote><p>This exact text is what your fingerprint approves.</p><div class='btn-app'>Approve with fingerprint</div>"),
       done: () => show("", PRINT + "<h5>Signed and posted</h5><p>Recorded on Solana. Readers see the green mark.</p>"),
-      idle: (line) => show("", PRINT + "<h5>Protecting " + HANDLE + "</h5><p>" + line + "</p><div class='btn-app quiet'>My account was hacked</div>"),
+      idle: (line, alert) => show("", (alert ? "<div class='toast'><b>X · security alert</b>" + alert + "</div>" : "") + PRINT + "<h5>Protecting " + HANDLE + "</h5><p>" + line + "</p><div class='btn-app quiet'>My account was hacked</div>"),
       confirm: () => show("bad", PRINT + "<h5>Report " + HANDLE + " as compromised?</h5><p>Every reader sees a warning right away.</p><div class='btn-app danger'>Yes, warn everyone</div>"),
       flagged: () => show("bad", PRINT + "<h5>" + HANDLE + " is marked compromised</h5><p>Everyone using Thumbprint sees the warning.</p><div class='btn-app'>I have my account back</div>"),
     };
@@ -511,17 +538,20 @@
   const stepLabel = document.getElementById("scene-step");
   const sentence = document.getElementById("scene-say");
   const phone = makePhone(document.getElementById("hero-phone"));
-  const say = (number, text, bad) => { stepLabel.textContent = "0" + number + " / 06"; sentence.textContent = text; sentence.parentNode.classList.toggle("bad", Boolean(bad)); who.textContent = bad && number < 6 ? "attacker is logged in" : ""; };
+  const frame = document.getElementById("scene-window");
+  const say = (number, text, bad) => { stepLabel.textContent = "0" + number + " / 06"; sentence.textContent = text; sentence.parentNode.classList.toggle("bad", Boolean(bad)); };
+  // The attacker's session: the browser frame turns red and says so until the owner is back in.
+  const owned = (on, hacking) => { frame.classList.toggle("owned", on); frame.classList.toggle("hacking", Boolean(hacking)); who.textContent = on ? "Attacker session" : ""; };
   loop([
-    [() => { feed.replaceChildren(post(POSTS.rule), post(POSTS.call)); phone.ask(POSTS.bag); say(1, "Maren writes a post. Her Seeker shows her the exact words before anything goes out."); }, 3600],
+    [() => { owned(false); feed.replaceChildren(post(POSTS.rule), post(POSTS.call)); phone.ask(POSTS.bag); say(1, "Maren writes a post. Her Seeker shows her the exact words before anything goes out."); }, 3600],
     [() => { phone.touch(); say(2, "She touches the fingerprint sensor. Only her finger unlocks the key inside the phone. No password or PIN can."); }, 3000],
     [() => { phone.done(); feed.prepend(post(POSTS.bag)); say(3, "The post goes out with a green mark. Anyone can check on Solana that her phone approved it."); }, 4200, true],
-    [() => { phone.idle("No post is waiting."); say(4, "A hacker SIM-swaps her and logs in to her X account from his own laptop.", true); }, 3800],
-    [() => { phone.idle("An attacker is posting. This phone was never asked."); feed.prepend(post(POSTS.drainer)); say(4, "He posts a fake presale. He does not have her phone, so there is no fingerprint and no mark. Readers get a warning and the link is blocked.", true); }, 6000, true],
+    [() => { owned(true, true); phone.idle("No post is waiting.", "New login to your account from an unknown device."); say(4, "Then she gets hacked. A SIM swap resets her password and a stranger logs in to her X account from his laptop.", true); }, 5200],
+    [() => { owned(true); phone.idle("An attacker is posting. This phone was never asked."); feed.prepend(post(POSTS.drainer)); say(4, "He posts a fake presale as her. He does not have her phone, so there is no fingerprint and no mark. Readers get a warning and the link is blocked.", true); }, 6400, true],
     [() => { phone.confirm(); say(5, "Maren still has her phone. She reports the account as hacked.", true); }, 3200],
     [() => { phone.touch(); say(5, "One touch of the sensor signs the report.", true); }, 2400],
     [() => { phone.flagged(); feed.replaceChildren(banner(), post(POSTS.drainer, { flagged: true }), post(POSTS.bag)); feed.firstChild.style.margin = "12px 16px"; say(5, "Every reader now sees the warning on her profile, with a link to the signed report. The hacker cannot remove it.", true); }, 6000],
-    [() => { phone.idle("Account recovered."); feed.replaceChildren(post(POSTS.bag), post(POSTS.rule), post(POSTS.call)); say(6, "When she gets the account back, she clears the warning the same way."); }, 4200],
+    [() => { owned(false); phone.idle("Account recovered."); feed.replaceChildren(post(POSTS.bag), post(POSTS.rule), post(POSTS.call)); say(6, "When she gets the account back, she clears the warning the same way."); }, 4200],
   ]);
 
   // ---- Dot-matrix fingerprint: ridges drawn as characters, with a scan line passing over ----
