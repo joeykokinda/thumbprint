@@ -196,7 +196,11 @@
 .tp-notice-proof {
   margin-top: 6px;
 }
+.tp-notice-line {
+  flex-wrap: wrap;
+}
 .tp-notice-reason {
+  flex-basis: 100%;
   color: var(--tp-muted);
 }
 .tp-notice-gate {
