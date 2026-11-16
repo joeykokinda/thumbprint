@@ -193,6 +193,9 @@
   font-weight: 700;
   color: var(--tp-notice-color);
 }
+.tp-notice-proof {
+  margin-top: 6px;
+}
 .tp-notice-reason {
   color: var(--tp-muted);
 }

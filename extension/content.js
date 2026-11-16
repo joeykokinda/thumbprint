@@ -249,9 +249,18 @@ async function markProfile() {
   line.append(
     iconElement("alert", "tp-notice-icon"),
     element("strong", null, "Account compromised"),
-    element("span", "tp-notice-reason", `The owner reported from their own device that @${handle.slice(2)} was taken over. Do not trust new posts or links until they recover it.`)
+    element("span", "tp-notice-reason", `The owner reported from their own Seeker that @${handle.slice(2)} was taken over. Do not trust new posts or links until they recover it.`)
   );
   notice.append(line);
+  if (result.reportUrl) {
+    const proof = element("div", "tp-notice-reason tp-notice-proof", `Reported ${new Date(result.reportedAt * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}, signed with the owner's fingerprint and recorded on Solana. `);
+    const link = element("a", "tp-card-link", "View the signed report ↗");
+    link.href = result.reportUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    proof.append(link);
+    notice.append(proof);
+  }
   header.after(notice);
 }
 

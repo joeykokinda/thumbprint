@@ -53,11 +53,16 @@ function saveAttestation(handle: string, textHash: string, owner: string, sgtMin
   waiters.get(`${handle}|${textHash}`)?.(signature);
 }
 
+// Older index files have no record of which transaction carried the report.
+for (const column of ["signature TEXT", "reported_at INTEGER"]) try { database.run(`ALTER TABLE flags ADD COLUMN ${column}`); } catch {}
 const isCompromised = (handle: string) =>
   Boolean((database.query("SELECT compromised FROM flags WHERE handle = ?").get(handle) as any)?.compromised);
 
 function lookup(item: { handle: string; hash: string; postedAt?: string | null }) {
-  return { ...lookupPost(item), compromised: isCompromised(item.handle) };
+  // The report is itself a signed transaction, so readers get a link to it, not just our word.
+  const flag = database.query("SELECT compromised, signature, reported_at FROM flags WHERE handle = ?").get(item.handle) as any;
+  const report = flag?.compromised && flag.signature ? { reportedAt: flag.reported_at, reportUrl: `https://explorer.solana.com/tx/${flag.signature}?cluster=devnet` } : {};
+  return { ...lookupPost(item), compromised: Boolean(flag?.compromised), ...report };
 }
 
 function lookupPost(item: { handle: string; hash: string; postedAt?: string | null }) {
@@ -302,7 +307,7 @@ export async function ingest(logs: string[], signature: string, blockTime: numbe
       continue;
     }
     if (event.name === "Bound") saveBinding(data.handle, owner, sgtMint, blockTime);
-    if (event.name === "Flagged") database.run("INSERT OR REPLACE INTO flags VALUES (?, ?)", [data.handle, data.compromised ? 1 : 0]);
+    if (event.name === "Flagged") database.run("INSERT OR REPLACE INTO flags (handle, compromised, signature, reported_at) VALUES (?, ?, ?, ?)", [data.handle, data.compromised ? 1 : 0, signature, blockTime]);
     if (event.name === "Attested") saveAttestation(data.handle, hex(data.text_hash), owner, sgtMint, Number(data.timestamp), signature);
   }
 }
