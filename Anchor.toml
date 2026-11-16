@@ -3,10 +3,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-thumbprint = "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s"
+thumbprint = "BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc"
 
 [programs.localnet]
-thumbprint = "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s"
+thumbprint = "BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc"
 
 [registry]
 url = "https://api.apr.dev"

@@ -25,6 +25,7 @@ describe("thumbprint", () => {
   const owner = Keypair.fromSecretKey(Uint8Array.from(fixture("owner.json")));
   const sgtMint = new PublicKey("5mXbkqKz883aufhAsx3p5Z1NcvD2ppZbdTTznM6oUKLj");
   const sgtTokenAccount = new PublicKey(fixture("sgt_token_account.json").pubkey);
+  const verifier = Keypair.fromSecretKey(Uint8Array.from(fixture("verifier.json")));
   const handle = "x:tester";
   const text = "hello from a real thumb";
   const accounts = { owner: owner.publicKey, sgtTokenAccount, sgtMint };
@@ -44,11 +45,15 @@ describe("thumbprint", () => {
   });
 
   it("binds a handle and records a post the device signed", async () => {
-    await program.methods
-      .bind(handle)
-      .accounts({ payer: provider.wallet.publicKey, ...accounts })
-      .preInstructions([deviceSignature(owner, bindMessage(handle))])
-      .rpc();
+    const bind = (signer: anchor.web3.Keypair) =>
+      program.methods
+        .bind(handle)
+        .accounts({ payer: provider.wallet.publicKey, verifier: signer.publicKey, ...accounts })
+        .preInstructions([deviceSignature(owner, bindMessage(handle))])
+        .signers([signer])
+        .rpc();
+    await rejects(bind(Keypair.generate()), "NotVerified"); // the device alone cannot claim a handle
+    await bind(verifier);
 
     const signature = await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc();
     const [event] = await events(signature);
@@ -81,8 +86,9 @@ describe("thumbprint", () => {
   it("rejects a second handle for the same device", async () => {
     const error = await program.methods
       .bind("x:second")
-      .accounts({ payer: provider.wallet.publicKey, ...accounts })
+      .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts })
       .preInstructions([deviceSignature(owner, bindMessage("x:second"))])
+      .signers([verifier])
       .rpc()
       .then(() => null, (thrown) => thrown);
     assert.ok(error, "second bind was accepted");

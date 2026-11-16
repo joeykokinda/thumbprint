@@ -1,5 +1,5 @@
 {
-  "address": "6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s",
+  "address": "BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc",
   "metadata": {
     "name": "thumbprint",
     "version": "0.1.0",
@@ -83,6 +83,11 @@
           "name": "payer",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "verifier",
+          "signer": true,
+          "address": "5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z"
         },
         {
           "name": "owner"
@@ -307,6 +312,11 @@
       "code": 6003,
       "name": "InvalidHandle",
       "msg": "Handle must be platform:name using a-z, 0-9, underscore or dot, at most 32 bytes"
+    },
+    {
+      "code": 6004,
+      "name": "NotVerified",
+      "msg": "Linking a handle needs the verifier's signature"
     }
   ],
   "types": [

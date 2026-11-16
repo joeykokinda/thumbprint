@@ -12,11 +12,19 @@ use anchor_spl::token_2022::spl_token_2022::{
 };
 use spl_token_group_interface::state::TokenGroupMember;
 
-declare_id!("6RWoM23c88jAcnvgPkierPcypWu2mTEtVw3Z4vN73J9s");
+declare_id!("BYeu5eZoiHT7JWYbaECxWdi3awPKMoZspYnnEN5uHUjc");
 
 // Seeker Genesis Token group, from docs.solanamobile.com/solana-mobile-stack/seeker-genesis-token
 pub const SGT_GROUP: Pubkey = pubkey!("GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te");
 pub const SGT_MINT_AUTHORITY: Pubkey = pubkey!("GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4");
+
+// Linking a handle needs this key's signature. The Thumbprint server holds it and only signs
+// after it has seen a public post from that handle carrying the device's code, so a handle
+// cannot be claimed by someone who does not control the account.
+#[cfg(feature = "devnet")]
+pub const VERIFIER: Pubkey = pubkey!("5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z");
+#[cfg(not(feature = "devnet"))]
+pub const VERIFIER: Pubkey = pubkey!("4VrKHHLAsJTtjDaKGNHbNfBNoTt5Q5jezwNZv8Vme8Z8"); // tests/fixtures/verifier.json
 
 pub const MAX_HANDLE_LEN: usize = 32;
 
@@ -30,8 +38,8 @@ pub mod thumbprint {
     // Anyone may pay for and submit the transaction; only the device can produce the message.
 
     /// One device, one handle. `handle` is "platform:name", lowercase, e.g. "x:someone".
-    // ponytail: first claim wins, control of the social account is not proven onchain.
-    // Upgrade path: require a verifier signature over a proof post before a handle counts as protected.
+    // ponytail: one trusted verifier key vouches for control of the social account.
+    // Upgrade path: several independent verifiers, or a zkTLS proof of the post checked here.
     pub fn bind(ctx: Context<Bind>, handle: String) -> Result<()> {
         require!(is_valid_handle(&handle), ThumbprintError::InvalidHandle);
         let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
@@ -196,6 +204,8 @@ fn verify_sgt(owner: &Pubkey, token_account: &AccountInfo, mint: &AccountInfo) -
 pub struct Bind<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+    #[account(address = VERIFIER @ ThumbprintError::NotVerified)]
+    pub verifier: Signer<'info>,
     /// CHECK: proven by the Ed25519 instruction, see signed_message
     pub owner: UncheckedAccount<'info>,
     /// CHECK: validated in verify_sgt
@@ -287,6 +297,8 @@ pub enum ThumbprintError {
     WrongMessage,
     #[msg("Handle must be platform:name using a-z, 0-9, underscore or dot, at most 32 bytes")]
     InvalidHandle,
+    #[msg("Linking a handle needs the verifier's signature")]
+    NotVerified,
 }
 
 #[cfg(test)]

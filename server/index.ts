@@ -4,6 +4,7 @@ import { Database } from "bun:sqlite";
 import * as anchor from "@coral-xyz/anchor";
 import QRCode from "qrcode";
 import { homedir } from "node:os";
+import { proofCode, verifyProof } from "./proof.ts";
 import idl from "./idl.json"; // copied from target/idl after anchor build
 
 const PORT = Number(process.env.PORT || 8787);
@@ -129,6 +130,7 @@ async function device(owner: string) {
   return {
     owner,
     sgtMint: token.mint,
+    proofCode: proofCode(owner),
     handle: account?.handle ?? null,
     compromised: account ? isCompromised(account.handle) : false,
     flagCount: account ? Number(account.flagCount) : 0,
@@ -140,7 +142,11 @@ const translate = (error: any) => new Error(error?.error?.errorMessage || error?
 // The phone sends a message it signed; we wrap it in a transaction, pay for it and submit it.
 // The program verifies the signature against the message it expects, so this server cannot
 // record anything the device did not sign.
-async function act(body: { kind: string; owner: string; handle?: string; compromised?: boolean; message: string; signature: string }) {
+async function act(body: { kind: string; owner: string; handle?: string; proof?: string; compromised?: boolean; message: string; signature: string }) {
+  // Our verifier signature on a link is only given for a handle whose own post carries this
+  // device's code. Dev mode lets the test signer link without posting.
+  if (body.kind === "bind" && !(DEV && !body.proof) && (await verifyProof(body.owner, String(body.proof))) !== body.handle)
+    return { error: "That post was not made by this account." };
   const owner = new anchor.web3.PublicKey(body.owner);
   const token = await findGenesisToken(body.owner);
   if (!token) return { error: "This wallet does not hold a Seeker Genesis Token." };
@@ -152,7 +158,7 @@ async function act(body: { kind: string; owner: string; handle?: string; comprom
   });
   const method =
     body.kind === "bind"
-      ? program.methods.bind(String(body.handle)).accounts({ payer: payer.publicKey, ...accounts })
+      ? program.methods.bind(String(body.handle)).accounts({ payer: payer.publicKey, verifier: payer.publicKey, ...accounts })
       : body.kind === "flag"
         ? program.methods.setCompromised(Boolean(body.compromised)).accounts(accounts)
         : program.methods.attest().accounts(accounts);
@@ -184,9 +190,16 @@ export async function ingest(logs: string[], signature: string, blockTime: numbe
   }
 }
 
-// ponytail: polls the public RPC for program transactions. The QuickNode Stream webhook
-// replaces this as the data source and calls the same ingest(); the poller stays as a
-// local-development fallback.
+// Primary data source: a QuickNode Stream (see quicknode/filter.js) pushes every transaction
+// that touches the program to POST /v1/stream. Set STREAM_TOKEN to accept it.
+const STREAM_TOKEN = process.env.STREAM_TOKEN;
+async function ingestStream(body: { transactions?: { signature: string; blockTime?: number; logs: string[] }[] }) {
+  for (const entry of body.transactions ?? []) await ingest(entry.logs, entry.signature, entry.blockTime ?? Math.floor(Date.now() / 1000));
+  return { ok: true, received: body.transactions?.length ?? 0 };
+}
+
+// ponytail: fallback for local development without a Stream: polls the public RPC for program
+// transactions and feeds the same ingest(). Turn off with POLL=0 once the Stream is live.
 async function poll() {
   const cursor = database.query("SELECT signature FROM cursor WHERE id = 1").get() as any;
   const signatures = await rpc(PROGRAM_RPC, "getSignaturesForAddress", [idl.address, { until: cursor?.signature, limit: 100 }]);
@@ -275,6 +288,12 @@ Bun.serve({
       return typed(await QRCode.toString(target, { type: "svg", margin: 0, errorCorrectionLevel: "M" }), "image/svg+xml");
     }
     if (url.pathname === "/v1/device") return guarded(device(url.searchParams.get("owner") || ""));
+    if (request.method === "POST" && url.pathname === "/v1/stream") {
+      if (!STREAM_TOKEN || url.searchParams.get("token") !== STREAM_TOKEN) return json({ error: "bad token" }, 401);
+      return guarded(request.json().then((body: any) => ingestStream(body)));
+    }
+    if (url.pathname === "/v1/proof")
+      return guarded(verifyProof(url.searchParams.get("owner") || "", url.searchParams.get("link") || "").then((handle) => ({ handle })));
     if (request.method === "POST" && url.pathname === "/v1/act") return guarded(request.json().then((body: any) => act(body)));
     if (url.pathname === "/v1/paired") return json({ paired: phones.has(url.searchParams.get("session") || "") });
     if (url.pathname.startsWith("/p/")) return proofPage(url.pathname.slice(3));

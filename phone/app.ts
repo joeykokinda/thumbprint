@@ -5,7 +5,7 @@ import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey } from "@solana/web3.js";
 import { attestMessage, bindMessage, flagMessage } from "./messages.ts";
 
-type Device = { owner: string; sgtMint: string; handle: string | null; compromised: boolean; flagCount: number };
+type Device = { owner: string; sgtMint: string; proofCode: string; handle: string | null; compromised: boolean; flagCount: number };
 type PostRequest = { handle: string; text: string };
 type Signed = { owner: string; signature: Uint8Array };
 
@@ -102,9 +102,14 @@ async function run(label: string, action: () => Promise<void>) {
 const actions: Record<string, (form?: HTMLFormElement) => void> = {
   connect: () => run("Opening wallet", async () => refreshDevice((await signer()).owner)),
   link: (form) => {
-    const handle = "x:" + new FormData(form!).get("handle")!.toString().trim().replace(/^@/, "").toLowerCase();
+    const fields = new FormData(form!);
+    const proof = fields.get("proof")?.toString().trim();
     run("Linking", async () => {
-      await signAndSubmit({ kind: "bind", handle }, bindMessage(handle));
+      // The account is whoever published the proof post; the test signer types a handle instead.
+      const handle = proof
+        ? (await api(`/v1/proof?owner=${state.device!.owner}&link=${encodeURIComponent(proof)}`)).handle
+        : "x:" + fields.get("handle")!.toString().trim().replace(/^@/, "").toLowerCase();
+      await signAndSubmit({ kind: "bind", handle, proof }, bindMessage(handle));
       await refreshDevice();
     });
   },
@@ -185,6 +190,18 @@ function body(): string {
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Thumbprint</h1>
       <p>Approve every post with your fingerprint. If someone takes over your account, their posts show up as not signed.</p></section>
       <button class="primary" data-action="connect">Connect Seeker</button>`;
+
+  if (!device.handle && !SOFTWARE) {
+    const proofText = `Protecting this account with Thumbprint. Posts I approve are signed by my Seeker. ${device.proofCode}`;
+    return `<section><h1>Link your account</h1>
+      <p>Post this from the X account you want to protect. It proves the account is yours.</p>
+      <blockquote>${escapeHtml(proofText)}</blockquote>
+      <a class="button quiet" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(proofText)}">Post on X</a></section>
+      <form data-action="link"><label for="proof">Link to that post</label>
+      <div class="field"><input id="proof" name="proof" type="url" required inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="https://x.com/you/status/…"></div>
+      <button class="primary">Link with fingerprint</button></form>
+      <p class="hint">One Seeker protects one account. It cannot be changed later.</p>`;
+  }
 
   if (!device.handle)
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Link your account</h1>
