@@ -3,8 +3,10 @@
 // itself, so the laptop can never get it to sign something the owner did not read.
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { Buffer } from "buffer";
 import idl from "../server/idl.json";
 import "../extension/shared.js"; // sha256Hex
+(globalThis as any).Buffer ??= Buffer; // web3.js expects the Node global
 
 declare const sha256Hex: (text: string) => Promise<string>;
 
