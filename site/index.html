@@ -202,10 +202,20 @@
   .screen .btn-app.danger { background: #ff5a64; color: #fff; }
   .device.touch .btn-app { opacity: 0.55; }
   @media (max-width: 760px) { .scene { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 0; } }
-  .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding-top: 40px; padding-bottom: 48px; }
-  .shots figcaption { margin-top: 16px; text-align: center; }
-  .shots .window.phone { margin: 0 auto; }
-  @media (max-width: 760px) { .shots { grid-template-columns: minmax(0, 1fr); } }
+  /* One phone that stays in view; its screen changes as each step scrolls past. */
+  .flip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; }
+  .flip-step { min-height: 78vh; display: flex; flex-direction: column; justify-content: center; opacity: 0.28; transition: opacity 300ms; }
+  .flip-step.on { opacity: 1; }
+  .flip-step h3 { margin: 12px 0 12px; font-size: 40px; line-height: 1.02; font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; max-width: 13ch; }
+  .flip-step p { margin: 0; color: var(--muted); max-width: 40ch; }
+  .flip-stage { position: sticky; top: 96px; align-self: start; height: calc(100vh - 120px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+  #flip-phone { position: relative; width: min(270px, 100%); aspect-ratio: 480 / 988; margin: 0; }
+  #flip-phone img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transform: scale(0.97) translateY(10px); transition: opacity 380ms ease-out, transform 380ms ease-out; }
+  #flip-phone img.on { opacity: 1; transform: none; }
+  .flip-dots { display: flex; gap: 8px; }
+  .flip-dots i { width: 22px; height: 3px; background: var(--line); transition: background 200ms; }
+  .flip-dots i.on { background: var(--accent); }
+  @media (max-width: 760px) { .flip { grid-template-columns: minmax(0, 1fr); gap: 0; } .flip-stage { order: -1; top: 72px; height: 52vh; z-index: 1; background: var(--paper); } #flip-phone { width: auto; height: 100%; } .flip-step { min-height: 60vh; } }
   .steps { border-top: 1px solid var(--line); }
   .step { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 40px; border-bottom: 1px solid var(--line); }
   .step:last-child { border-bottom: 0; }
@@ -230,14 +240,6 @@
   .cards.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   code, .mono { font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
 
-  .feed { margin: 0; padding: 0; list-style: none; }
-  .feed li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 12px; padding: 4px 0; }
-  .feed a { color: #d7dbd3; text-decoration: none; }
-  .feed a:hover { color: var(--glow); }
-  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-top: 32px; border: 1px solid var(--line); }
-  .stats div { padding: 20px 24px; }
-  .stats div + div { border-left: 1px solid var(--line); }
-  .stat { font: 600 48px/1 var(--mono); letter-spacing: -0.04em; margin-top: 10px; font-variant-numeric: tabular-nums; }
 
   footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 28px; padding-bottom: 40px; }
 
@@ -271,7 +273,6 @@
     <nav>
       <a href="#how">How it works</a>
       <a href="#chain">Chain</a>
-      <a href="#live">Live</a>
       <a href="https://github.com/joeykokinda/thumbprint">GitHub</a>
       <a class="btn small" href="#install">Install</a>
     </nav>
@@ -350,11 +351,15 @@
 
   <div class="band">
     <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>The app</span><span>Captured on a <b>real Seeker</b></span><span>Signer: <b>fingerprint only</b></span></div>
-    <div class="shots pad reveal">
-      <figure style="margin:0"><div class="window phone"><img src="/site/app-write.png" alt="The Thumbprint app on a Seeker with a post typed and an Approve and post button" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Write a post</figcaption></figure>
-      <figure style="margin:0"><div class="window phone"><img src="/site/app-approve.png" alt="The app showing a post sent from the laptop with an Approve with fingerprint button" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Approve one from your laptop</figcaption></figure>
-      <figure style="margin:0"><div class="window phone"><img src="/site/app-kill.png" alt="The app asking to report the account as compromised" loading="lazy" width="480" height="988"></div><figcaption class="label"><i class="sq"></i>Kill switch</figcaption></figure>
+    <div class="flip pad">
+      <div class="flip-steps">
+        <div class="flip-step" data-shot="0"><span class="label"><span class="num">01</span>Write</span><h3>Write the post on the phone</h3><p>Type it in the app. Nothing is sent to X yet. The words on this screen are the only words your fingerprint will approve.</p></div>
+        <div class="flip-step" data-shot="1"><span class="label"><span class="num">02</span>Approve</span><h3>Or approve one from your laptop</h3><p>Press the Thumbprint button in X's composer and the draft shows up here. Read it, touch the sensor, and the laptop posts it. Reject it and nothing goes out.</p></div>
+        <div class="flip-step alert" data-shot="2"><span class="label"><span class="num">03</span>Kill switch</span><h3>Hacked? Tell everyone in one touch</h3><p>You still hold the phone, so you still hold the key. One touch puts a warning on your profile for every reader, even while the attacker is logged in.</p></div>
+      </div>
+      <div class="flip-stage"><div class="window phone" id="flip-phone"><img src="/site/app-write.png" alt="The Thumbprint app on a Seeker with a post typed and an Approve and post button" width="480" height="988" class="on"><img src="/site/app-approve.png" alt="The app showing a post sent from the laptop with an Approve with fingerprint button" width="480" height="988"><img src="/site/app-kill.png" alt="The app asking to report the account as compromised" width="480" height="988"></div><div class="flip-dots label" id="flip-dots"><i class="on"></i><i></i><i></i></div></div>
     </div>
+  </div>
   </div>
 
   <div class="band" id="chain">
@@ -366,23 +371,6 @@
       <div class="reveal"><span class="label"><i class="sq"></i>Record</span><h3>Public and permanent</h3><p>Every approval is an event anyone can read. A QuickNode Stream carries them to the index the extension looks up, and each mark links to its transaction.</p></div>
     </div>
     <div class="pad label" style="padding-top:18px;padding-bottom:18px;border-top:1px solid var(--line)">Program · <b class="mono" style="letter-spacing:0;text-transform:none">EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS</b></div>
-  </div>
-
-  <div class="band section" id="live">
-    <div class="strip label"><span style="color:var(--accent)"><i class="sq"></i>03 // Live</span><span>Source: <b>this server's index</b></span><span>Refresh: <b>5 seconds</b></span></div>
-    <div class="split pad">
-      <div>
-        <h2>Live from the chain.</h2>
-        <div class="stats">
-          <div><span class="label">Posts approved</span><div class="stat" id="total">0</div></div>
-          <div><span class="label">Accounts protected</span><div class="stat" id="accounts">0</div></div>
-        </div>
-      </div>
-      <div class="term">
-        <div class="term-bar"><span class="dots"><i></i><i></i><i></i></span><span class="term-title">approvals · newest first</span><span class="playing">LIVE</span></div>
-        <div class="sim-col" style="min-height:220px"><ul class="feed" id="feed"><li><span class="src" style="color:var(--term-dim)">~ $</span><span class="cursor">waiting for the first approval</span></li></ul></div>
-      </div>
-    </div>
   </div>
 
   <div class="band" id="install">
@@ -580,33 +568,17 @@
   sweep();
   if (!still) setInterval(sweep, 70);
 
+  // ---- The app: the step nearest the middle of the screen decides which capture shows ----
+  const shots = document.querySelectorAll("#flip-phone img");
+  const dots = document.querySelectorAll("#flip-dots i");
+  const flipSteps = document.querySelectorAll(".flip-step");
+  const showShot = (index) => [shots, dots, flipSteps].forEach((group) => group.forEach((node, at) => node.classList.toggle("on", at === index)));
+  showShot(0);
+  const flipObserver = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && showShot(Number(entry.target.dataset.shot))), { rootMargin: "-50% 0px -50% 0px" });
+  flipSteps.forEach((node) => flipObserver.observe(node));
+
   // ---- Scroll reveal ----
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && (entry.target.classList.add("in"), observer.unobserve(entry.target))), { threshold: 0.15 });
   document.querySelectorAll(".reveal").forEach((node) => observer.observe(node));
-
-  // ---- Live feed ----
-  const ago = (seconds) => {
-    const minutes = Math.floor((Date.now() / 1000 - seconds) / 60);
-    return minutes < 1 ? "just now" : minutes < 60 ? minutes + "m ago" : minutes < 1440 ? Math.floor(minutes / 60) + "h ago" : Math.floor(minutes / 1440) + "d ago";
-  };
-  async function refresh() {
-    const data = await (await fetch("/v1/recent")).json();
-    document.getElementById("total").textContent = data.total;
-    document.getElementById("accounts").textContent = data.accounts;
-    if (!data.recent.length) return;
-    document.getElementById("feed").replaceChildren(...data.recent.map((entry) => {
-      const item = el("li");
-      const link = el("a", "", "@" + entry.handle.slice(2) + " approved a post");
-      link.href = "/p/" + encodeURIComponent(entry.signature);
-      const state = el("span", "", "signed");
-      state.style.color = "var(--glow)";
-      const when = el("span", "", ago(entry.timestamp));
-      when.style.color = "var(--term-dim)";
-      item.append(state, link, when);
-      return item;
-    }));
-  }
-  refresh().catch(() => {});
-  setInterval(() => document.visibilityState === "visible" && refresh().catch(() => {}), 5000);
 </script>
 </html>
