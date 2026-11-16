@@ -176,10 +176,10 @@ function markUnsigned(post, compromised) {
   const links = Array.from(post.textElement.querySelectorAll('a[href^="http"]'));
   const name = "@" + post.handle.slice(2);
   const danger = compromised || links.length > 0;
-  const label = compromised ? "Account compromised" : "Not signed";
+  const label = compromised ? "Account compromised" : "No fingerprint on this post";
   const reason = compromised
     ? `The owner of ${name} reported this account as taken over. This post was not approved on their device.`
-    : `${name} signs posts with Thumbprint. This one was not approved on their device.`;
+    : `${name} approves every post with a fingerprint on their own phone. This one has none, so it may not be from them.`;
   const notice = element("div", "tp-notice tp-notice-danger");
   notice.setAttribute("role", "note");
   const line = element("div", "tp-notice-line");
@@ -187,7 +187,7 @@ function markUnsigned(post, compromised) {
   notice.append(line);
   if (links.length) {
     const gate = element("div", "tp-notice-gate");
-    gate.append(element("span", null, compromised ? "Links in this post are blocked." : "Links in this post are blocked. The account may be compromised."));
+    gate.append(element("span", null, compromised ? "Links in this post are blocked." : "Links are blocked. This is how wallet drainers are posted from hacked accounts."));
     const open = element("button", "tp-notice-open", "Unblock links");
     open.type = "button";
     open.addEventListener("click", (event) => {

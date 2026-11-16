@@ -125,7 +125,14 @@
   .xtext s { color: #536471; }
   .xchip { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid #f0c9be; border-radius: 9999px; color: var(--alert); font-size: 12px; font-weight: 600; }
   .xnote { margin: 6px 0 4px; padding: 8px 10px; border: 1px solid #f3d9d1; border-left: 3px solid var(--alert); border-radius: 8px; color: #536471; font-size: 13px; }
-  .xnote strong { color: var(--alert); margin-right: 6px; }
+  .xnote { border-radius: 4px 12px 12px 4px; padding: 8px 12px; color: #0f1419; line-height: 18px; }
+  .xnote-line { display: flex; align-items: flex-start; gap: 6px; }
+  .xnote-line svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: #d91f2a; }
+  .xnote-line strong { flex: none; }
+  .xnote-line span { color: #536471; }
+  .xnote-gate { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eff3f4; }
+  .xnote-gate u { flex: none; color: #536471; font-weight: 700; }
+  .xnote strong { color: #d91f2a; margin-right: 6px; }
   .xnote a { color: var(--accent); font-weight: 600; white-space: nowrap; }
   .xacts { display: flex; align-items: center; gap: 4px; margin-top: 10px; color: #536471; font-size: 13px; }
   .xacts span { display: flex; align-items: center; gap: 4px; flex: 1; }
@@ -411,6 +418,7 @@
     ["M7 4h10v16l-5-4-5 4z", ""],
     ["M12 15V4M8 8l4-4 4 4M5 14v5h14v-5", ""],
   ];
+  const ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17v.5"/></svg>';
   function post(item, options = {}) {
     const node = el("div", "xpost");
     const body = el("div");
@@ -421,11 +429,17 @@
     body.append(name);
     if (!item.signed) {
       const note = el("div", "xnote");
-      note.append(el("strong", "", options.flagged ? "Account compromised" : "Not signed"), options.flagged ? "The owner reported this account as taken over. This post was not approved on their Seeker." : "This account approves its posts with a fingerprint. This one was not approved.");
+      // Same words and layout as extension/content.js markUnsigned.
+      const line = el("div", "xnote-line");
+      line.innerHTML = ALERT;
+      line.append(el("strong", "", options.flagged ? "Account compromised" : "No fingerprint on this post"), el("span", "", options.flagged ? `The owner of ${HANDLE} reported this account as taken over. This post was not approved on their device.` : `${HANDLE} approves every post with a fingerprint on their own phone. This one has none, so it may not be from them.`));
+      const gate = el("div", "xnote-gate");
+      gate.append(el("span", "", options.flagged ? "Links in this post are blocked." : "Links are blocked. This is how wallet drainers are posted from hacked accounts."), el("u", "", "Unblock links"));
+      note.append(line, gate);
       body.append(note);
     }
     const text = el("div", "xtext", item.text + " ");
-    if (item.link) text.append(el("s", "", item.link), el("span", "xchip", "Link blocked"));
+    if (item.link) text.append(el("s", "", item.link));
     body.append(text);
     if (options.card) {
       const card = el("div", "xcard");
