@@ -40,6 +40,10 @@ const api = async (path: string, body?: unknown) => {
 // ---- Signers: both return the signer's address and, when given a message, its signature ----
 
 async function seedVault(message?: string): Promise<Signed> {
+  // The wallet is reached over a socket on this phone, and Chrome asks permission for that the
+  // first time. Ask before the wallet opens: its sheet would otherwise sit on top of Chrome's
+  // prompt and swallow the tap. The probe itself always fails; only the prompt matters.
+  await fetch("http://localhost:9/", { mode: "no-cors" }).catch(() => {});
   return transact(async (wallet) => {
     const authorization = await wallet.authorize({ chain: "solana:mainnet", identity: IDENTITY, auth_token: localStorage.getItem("authToken") || undefined });
     localStorage.setItem("authToken", authorization.auth_token);
