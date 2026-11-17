@@ -31,7 +31,7 @@ BEATS = [
     ("attack3", [("cam2", 147.5, 149.56, "So I do what every hacker does."), ("cam2", 149.6, 156.7)],
      [("clip", "attempt3", 2.3), ("split", ([("v", "phone-hack-cfr.mp4", 54.0, None)], [("s", "x-feed.jpg", 1500, 215, 40, 70, None)]), None)]),
     ("stop", [("cam3", 200.6, 209.6)], [("split", ([("v", "phone-kill-cfr.mp4", 11.8, 2.7), ("v", "phone-kill-cfr.mp4", 19.0, 1.4), ("v", "phone-kill-cfr.mp4", 30.5, 1.2), ("v", "phone-kill-cfr.mp4", 37.0, None)],
-                                                    [("c", "p-stop", 6.9), ("s", "tx-stop.png", 3648, 440, 6230, 6270, None)]), None)]),
+                                                    [("c", "p-stop", 6.9), ("s", "tx-stop.png", 3648, 440, 5960, 6000, None)]), None)]),
     ("seeker", [("cam3", 31.2, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 12.5, None)], [("c", "p-seeker", None)]), None)]),
     ("tech", [("cam3", 103.9, 112.5), ("cam3", 120.8, 122.58, "Android then signs a", 0), ("cam3", 122.5, 131.1), ("cam2", 242.7, 248.85)], [("clip", "tech", None)]),
     ("close", [("cam2", 277.3, 282.8)], [("clip", "end", None)]),
