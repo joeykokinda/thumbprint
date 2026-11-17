@@ -35,7 +35,6 @@ BEATS = [
                                           [("s", "x-feed.jpg", 1700, 300, 595, 612, 4.4), ("s", "tx-stop.png", 3648, 440, 6110, 6150, None)]), None)]),
     ("seeker", [("cam3", 31.1, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 0.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
     ("tech", [(V, 100.5, 106.3), (V, 121.0, 132.9)], [("clip", ("tech", 1.5), None)]),
-    ("verify", [("cam2", 249.3, 253.6, "The payment and the check are the same instruction, so you can't approve one address and pay another.", 0.5), ("cam2", 259.3, 262.3)], [("wide", [("s", "tx-ok.png", 2800, 290, 305, 900, None)], None)]),
     ("adopt", [(V, 133.1, 139.7), ("cam3", 240.0, 242.3, "Today it's a browser extension and a Seeker app,", 0.25), ("cam3", 247.6, 250.4, "and the same check can live inside wallets.")],
      [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, 7.2), ("s", "home.png", 1500, 0, 0, 300, None)], None)]),
     ("close", [(V, 141.9, 145.25, "Your password can be stolen, but your fingerprint can't.")], [("clip", "end", None)]),
@@ -69,12 +68,34 @@ def speech(take, start, end):
     voiced = [i for i, level in enumerate(loud) if level > 0.08 * max(loud)]
     return max(start, start + voiced[0] / 100 - 0.05), min(end, start + (voiced[-1] + 1) / 100 + 0.2)
 
+import numpy
+def spectrum(take):
+    """Average loudness of the voiced frames in eleven bands."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", f"{HERE}/footage/{take}.mp4", "-vn", "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    sound = numpy.frombuffer(raw, dtype=numpy.int16).astype(numpy.float32)
+    frames = sound[:len(sound) // 4096 * 4096].reshape(-1, 4096)
+    frames = frames[frames.std(axis=1) > numpy.median(frames.std(axis=1))]
+    power = (numpy.abs(numpy.fft.rfft(frames * numpy.hanning(4096), axis=1)) ** 2).mean(axis=0)
+    hertz = numpy.fft.rfftfreq(4096, 1 / RATE)
+    return numpy.array([power[(hertz >= middle / 1.26) & (hertz < middle * 1.26)].mean() for middle in BANDS])
+BANDS = [100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000]
+tones = {}
+def tone(take):
+    """An equaliser that makes an older take sound like the main recording's microphone."""
+    if take == V: return ""
+    if take not in tones:
+        if V not in tones: tones[V] = spectrum(V)
+        gain = 10 * numpy.log10(tones[V] / spectrum(take)); gain = numpy.clip(gain - gain[3:8].mean(), -9, 9)
+        tones[take] = "firequalizer=gain_entry='" + ";".join(f"entry({band},{g:.1f})" for band, g in zip(BANDS, gain)) + "',"
+        print(take, "tone", " ".join(f"{g:+.0f}" for g in gain))
+    return tones[take]
+
 def say(take, a, b, spoken, gap):
     """Appends one stretch of audio; spoken is [(offset from a, offset end, word)]."""
     global clock, count
     path = f"{HERE}/work/n/{count:03d}.wav"; count += 1
     run("-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vn", "-ac", "1", "-ar", str(RATE),
-        "-af", f"afade=t=in:d=0.02,afade=t=out:st={b - a - 0.03:.3f}:d=0.03", path)
+        "-af", f"{tone(take)}afade=t=in:d=0.02,afade=t=out:st={b - a - 0.03:.3f}:d=0.03", path)
     clip = wave.open(path)
     samples = array.array("h", clip.readframes(clip.getnframes()))
     loud = sorted(abs(x) for x in samples)[int(len(samples) * 0.95)] or 1  # takes come from different mics: match their level
@@ -95,7 +116,7 @@ for name, pieces, visuals in BEATS:
             spoken = []
             for word in text:
                 spoken.append(((b - a) * at / total, (b - a) * (at + len(word) + 1) / total, word)); at += len(word) + 1
-            say(take, a, b, spoken, rest[1] if len(rest) > 1 else 0.1)
+            say(take, a, b, spoken, rest[1] if len(rest) > 1 else 0.6)
             continue
         run_words, runs = [], []
         for word in words(take, start, end):
@@ -105,8 +126,8 @@ for name, pieces, visuals in BEATS:
         runs.append(run_words)
         for group in runs:
             a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.2
-            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.45)
-    silence(2.6 if name == "close" else 0.8)
+            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.7)
+    silence(2.6 if name == "close" else 0.9)
     first[name] = camera[mark][1]
     timing.append((name, begin, clock, visuals))
 voice.close()
@@ -209,7 +230,7 @@ for name, begin, end, visuals in timing:
                 f"[1:v]format=rgba[p0];[p0][2:v]alphamerge[p];[0:v][p]overlay={WIDE[0]}:{WIDE[1]}", "-t", t, *BASE, path)
         elif kind == "still":
             image, y0, y1, zoom, *anchor = argument
-            run("-loop", "1", "-i", f"{HERE}/clips/{image}.png", "-vf", f"scale={int(W * zoom)}:-2,crop={W}:{H}:{anchor[0] if anchor else f'(iw-{W})/2'}:'{y0}+({y1}-{y0})*t/{t}'" + (",drawbox=x=14:y=356:w=1892:h=92:color=0xff5a3c:t=6" if image == "tx-bad" else ""), "-t", t, *BASE, path)
+            run("-loop", "1", "-i", f"{HERE}/clips/{image}.png", "-vf", f"scale={int(W * zoom)}:-2,crop={W}:{H}:{anchor[0] if anchor else f'(iw-{W})/2'}:'{y0}+({y1}-{y0})*t/{t}'" + (f",drawbox=x=14:y=356:w=1892:h=92:color=0xff5a3c:t=6,drawbox=x=60:y=60:w=1180:h=110:color=0xff5a3c:t=fill,drawtext=fontfile={FONT}:text='REJECTED BY SOLANA  ·  NOTHING MOVED':fontcolor=0x0c0d0c:fontsize=52:x=96:y=90" if image == "tx-bad" else ""), "-t", t, *BASE, path)
         else:
             side, panel = argument
             box = PHONE if kind == "split" else LABEL
@@ -222,7 +243,7 @@ for name, begin, end, visuals in timing:
 intro_begin, intro_end = next((b, e) for n, b, e, _ in timing if n == "intro")
 cam_length = intro_end - intro_begin + 0.5
 run("-ss", f"{first['intro']:.3f}", "-i", f"{HERE}/footage/cam2.mp4", "-vf",
-    f"fps={FPS},scale={W}:{H}:flags=lanczos,eq=brightness=0.06:contrast=1.1:saturation=0.45,unsharp=5:5:0.4,"
+    f"fps={FPS},crop=iw*0.84:ih*0.84:iw*0.08:ih*0.05,scale={W}:{H}:flags=lanczos,eq=brightness=0.1:contrast=1.14:saturation=0.45,unsharp=5:5:0.4,"
     f"drawtext=fontfile={FONT}:text='Joey Kokinda':fontcolor=white:fontsize=76:x=90:y=70:shadowcolor=black@0.6:shadowx=3:shadowy=3,"
     f"drawtext=fontfile={FONT}:text='BOILER BLOCKCHAIN':fontcolor=0x14f195:fontsize=32:x=94:y=164:shadowcolor=black@0.6:shadowx=2:shadowy=2",
     "-t", f"{cam_length:.3f}", *BASE, f"{HERE}/work/v/camfull.mp4")
@@ -245,7 +266,7 @@ PlayResX: {W}
 PlayResY: {H}
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV
-Style: Main,Montserrat,62,&H00FFFFFF,&H00121414,&H00121414,1,1,4,1,2,200,200,56
+Style: Main,Montserrat,50,&H00FFFFFF,&H00121414,&H00121414,1,1,4,1,2,200,200,34
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """ + "\n".join(lines) + "\n")
@@ -266,7 +287,7 @@ chain.append(f"[o2]ass={HERE}/work/captions.ass:fontsdir={HERE}/work[v]")
 music = f"{HERE}/footage/music.mp3"
 if os.path.exists(music):
     inputs += ["-stream_loop", "-1", "-i", music]
-    chain.append(f"[{n + 2}:a]volume=0.2,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 1}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
+    chain.append(f"[{n + 2}:a]volume=0.3,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 1}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
 else:
     chain.append(f"[{n + 1}:a]anull[a]")
 open(f"{HERE}/work/graph.txt", "w").write(";\n".join(chain))

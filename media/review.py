@@ -37,6 +37,7 @@ Be blunt and specific. Give:
 5. Does the problem -> solution -> proof logic hold? Where would a skeptical judge push back?
 6. What to cut, what to add, what to re-record. Ranked by impact.
 7. The single strongest moment and the single weakest."""
+PROMPT = os.environ.get("PROMPT") or PROMPT
 body = {"contents": [{"parts": [{"file_data": {"mime_type": "video/mp4", "file_uri": file["uri"]}}, {"text": PROMPT}]}]}
 _, out = call(f"{API}/v1beta/{model}:generateContent", json.dumps(body).encode(), {"Content-Type": "application/json"})
 text = "".join(part.get("text", "") for part in json.loads(out)["candidates"][0]["content"]["parts"])
