@@ -21,7 +21,7 @@ BEATS = [
     ("password", [("cam2", 33.8, 47.9)], [("clip", "password", None)]),
     ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("cam", None, None)]),
     ("title", [("cam2", 59.15, 60.37, "Thumbprint takes the", 0), ("cam2", 60.33, 65.7)], [("clip", "title", None)]),
-    ("app", [("cam4", 112.6, 119.95)], [("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("c", "p-app", None)]), None)]),
+    ("app", [("cam4", 112.6, 114.75), ("cam4", 116.98, 119.95)], [("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("c", "p-app", None)]), None)]),
     ("founder", [("cam3", 10.2, 20.3)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 3.9), ("v", "phone-post-cfr.mp4", 19.0, 2.7), ("v", "phone-post-cfr.mp4", 82.5, None)], [("c", "p-founder", None)]), None)]),
     ("follower", [("cam4", 0.1, 7.9), ("cam4", 12.0, 14.55, "Approved posts get a green fingerprint mark."), ("cam4", 14.7, 19.0)],
      [("panel", ([("c", "l-follower", None)], [FEED(70, 300, 11.0), ("s", "x-popup.jpg", 1400, 185, 300, 300, 2.6), ("v", "chrome-approved.mp4", 22.5, None, "1030:855:440:215")]), None)]),

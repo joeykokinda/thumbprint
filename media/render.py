@@ -11,7 +11,7 @@ SCENES = [  # name, query, seconds. Delays (d=) are timed to the words in the cu
     ("title", "s=title&dark=1&d=0,0.25,3.0", 5.0), ("pieces", "s=pieces&d=0.1,0.2,2.8,3.2,5.6,6.0", 8.0), ("hacked", "s=hacked&dark=1&d=0.1,0.2,2.3", 4.0),
     ("tech", "s=tech&dark=1&d=0.1,0.2,8.7,16.4,19.7", 28.0), ("end", "s=end&dark=1", 5.0), ("touch", "s=touch&dark=1", 1.5),
     ("p-founder", "s=p-founder&box=panel&d=0.1,0.2,0.4,4.0,5.4,6.4", 9.0, (803, 667)), ("p-seeker", "s=p-seeker&box=panel&dark=1&d=0.1,0.2,1.6,4.9,6.0,7.1", 9.0, (803, 667)),
-    ("p-app", "s=p-app&box=panel&d=0.1,0.2,3.9,4.7,5.8", 8.0, (803, 667)),
+    ("p-app", "s=p-app&box=panel&d=0.1,0.2,2.8,3.6,4.7", 8.0, (803, 667)),
     ("l-pay", "s=l-pay&box=side&d=0.1,0.2,0.5,3.6", 6.0, (360, 667)),
     ("p-stop", "s=p-stop&box=panel&dark=1&d=0.1,0.2,2.5,3.4,4.9", 7.0, (803, 667)), ("l-follower", "s=l-follower&box=side&d=0.1,0.2,0.5,7.7,9.0", 11.0, (360, 667)), ("intro", "s=intro&dark=1&d=0.1,0.2,3.5", 6.0), ("next", "s=next&d=0.1,0.2,2.3,4.4", 6.0),
     ("attempt1", "s=attempt&n=1&t=Pay the hacker's wallet&r=Rejected", 3.0),
