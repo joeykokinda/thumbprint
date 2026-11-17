@@ -24,6 +24,17 @@
       "rejected": true,
       "reason": "WrongRecipient",
       "recordedAt": "2026-11-17T01:41:35.051Z"
+    },
+    "suspended": {
+      "signature": "3t399ngzNc748Mvdws8hESJopoycuiLAHagjRxGYFrw6WTYDRzSipwPP5abMuSQZxAFoyLBpoSc5kbZidvR47Wxd",
+      "recipient": "5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z",
+      "payer": "8F8KLTdrGZ8wHXedWhdTZMzu9p5VjFtA9MVDB96KMURe",
+      "lamports": 1000,
+      "recipientChange": 0,
+      "fee": 5000,
+      "rejected": true,
+      "reason": "ReportedCompromised",
+      "recordedAt": "2026-11-17T05:25:13.750Z"
     }
   }
 }

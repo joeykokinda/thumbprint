@@ -43,6 +43,13 @@ h1 span,.good{color:var(--accent)}.dark h1 span,.dark .good{color:var(--glow)}.b
 .stamp.ok{border-color:var(--accent);color:var(--accent)}
 .glyph{width:120px;height:120px;color:var(--accent)}.dark .glyph{color:var(--glow)}
 .big{font:700 60px/1 var(--sans);letter-spacing:-.035em;text-transform:uppercase}
+body.panel,body.panel html{width:803px;height:667px}body.panel .stage{padding:54px 58px;justify-content:flex-start}
+body.side{width:360px;height:667px;background:var(--paper)}body.side .stage{padding:60px 8px 60px 0;justify-content:center}
+.steps{margin-top:30px;border-top:1px solid var(--line)}.dark .steps{border-color:#2c2f2b}
+.steps div{display:grid;grid-template-columns:64px 1fr;align-items:baseline;padding:19px 0;border-bottom:1px solid var(--line)}.dark .steps div{border-color:#2c2f2b}
+.steps i{font:600 16px var(--mono);font-style:normal;letter-spacing:.12em;color:var(--accent)}.dark .steps i{color:var(--glow)}.steps i.alert{color:var(--alert)}
+.steps b{font:700 31px/1.1 var(--sans);letter-spacing:-.025em;text-transform:uppercase}.steps small{display:block;margin-top:6px;font:400 18px/1.3 var(--sans);text-transform:none;letter-spacing:0;color:var(--muted)}.dark .steps small{color:#a3a79e}
+.ph{font:700 56px/.98 var(--sans);letter-spacing:-.04em;text-transform:uppercase;margin-top:16px}
 </style>
 <body>
 <section class="stage" id="hacks"><span class="label a"><i class="sq alert"></i>Hacked X accounts</span>
@@ -82,6 +89,23 @@ h1 span,.good{color:var(--accent)}.dark h1 span,.dark .good{color:var(--glow)}.b
 
 <section class="stage" id="intro"><span class="label a"><i class="sq"></i>Boiler Blockchain</span><h1 class="a" style="margin-top:20px">Joey Kokinda</h1><p class="big a" style="margin-top:34px;font-size:50px">A hacked account<br><span class="good">can't steal your followers.</span></p></section>
 
+<section class="stage stampbox" id="touch"><svg class="glyph a" style="width:300px;height:300px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg><p class="label a" style="margin-top:30px;font-size:24px;animation-delay:.15s">Fingerprint on the Seeker</p></section>
+
+<section class="stage" id="p-founder"><span class="label a"><i class="sq"></i>Founder · Seeker app</span><p class="ph a">Nothing posts without <span class="good">the fingerprint.</span></p>
+<div class="steps"><div class="a"><i>01</i><b>Write the post</b></div><div class="a"><i>02</i><b>Read the exact words<small>Full text on a native screen. Nothing shortened.</small></b></div><div class="a"><i>03</i><b>Press your fingerprint<small>Signed by the key inside the Seeker.</small></b></div><div class="a"><i>04</i><b>It posts<small>With a mark anyone can verify on Solana.</small></b></div></div></section>
+
+<section class="stage" id="p-app"><span class="label a"><i class="sq"></i>For account owners · Seeker app</span><p class="ph a">One screen. <span class="good">Your thumb.</span></p>
+<div class="steps"><div class="a"><i>01</i><b>Write posts<small>Nothing goes out without your fingerprint.</small></b></div><div class="a"><i>02</i><b>Approve payment addresses<small>The only address your community can pay.</small></b></div><div class="a"><i class="alert">03</i><b>Hit the kill switch<small>Flag the account the moment it is taken.</small></b></div></div></section>
+
+<section class="stage" id="p-seeker"><span class="label a"><i class="sq"></i>Why the Solana Seeker</span><p class="ph a">The one phone <span class="good">built for this.</span></p><p class="a" style="margin-top:18px;font-size:22px;color:#a3a79e">Thumbprint only enrolls a real Seeker.</p>
+<div class="steps"><div class="a"><i>01</i><b>Seed Vault wallet<small>Hardware wallet built into the phone. Links the phone to the X account.</small></b></div><div class="a"><i>02</i><b>Fingerprint sensor<small>Required for every single approval.</small></b></div><div class="a"><i>03</i><b>Genesis Token<small>Proves a real Seeker, not an emulator. One phone, one account.</small></b></div></div></section>
+
+<section class="stage" id="p-stop"><span class="label a"><i class="sq alert"></i>Kill switch</span><p class="ph a">Don't win the account back first. <span class="bad">Stop it.</span></p>
+<div class="steps"><div class="a"><i class="alert">01</i><b>Open the phone<small>No password. No X login needed.</small></b></div><div class="a"><i class="alert">02</i><b>Press your fingerprint</b></div><div class="a"><i class="alert">03</i><b>Flagged on Solana<small>Every reader is warned. Payments stop.</small></b></div></div></section>
+
+<section class="stage" id="l-follower"><span class="label a"><i class="sq"></i>Follower</span><p class="ph a" style="font-size:46px">Chrome extension</p><p class="a" style="margin-top:22px;font-size:21px;line-height:1.35;color:var(--muted)">X looks the same. Every post is checked against Solana.</p>
+<div class="steps" style="margin-top:34px"><div class="a" style="grid-template-columns:1fr"><b style="font-size:23px" class="good">Green mark<small>Approved on the phone.</small></b></div><div class="a" style="grid-template-columns:1fr"><b style="font-size:23px" class="bad">Red warning<small>No fingerprint on this post.</small></b></div></div></section>
+
 <section class="stage" id="hacked"><span class="label a"><i class="sq alert"></i>Account compromised</span><h1 class="a bad" style="margin-top:22px">Now I'm the hacker.</h1><p class="big a" style="margin-top:26px;font-size:46px">I have the password. I have everything.</p></section>
 
 <section class="stage stampbox" id="attempt"><span class="label a" id="at-label"></span><h1 class="a" id="at-title" style="margin-top:20px;animation-delay:.15s"></h1><div><span class="stamp" id="at-stamp" style="animation-delay:.9s"></span></div></section>
@@ -98,6 +122,7 @@ h1 span,.good{color:var(--accent)}.dark h1 span,.dark .good{color:var(--glow)}.b
 <script>
 const q=new URLSearchParams(location.search),s=q.get("s")||"title";
 if(q.get("dark"))document.body.classList.add("dark");
+if(q.get("box"))document.body.classList.add(q.get("box"));
 if(s==="attempt"){const n=q.get("n");document.getElementById("at-label").innerHTML='<i class="sq alert"></i>Attempt '+n;document.getElementById("at-title").textContent=q.get("t");const st=document.getElementById("at-stamp");st.textContent=q.get("r")||"Rejected";if(q.get("ok"))st.classList.add("ok");}
 if(q.get("d")){const d=q.get("d").split(",");document.querySelectorAll("#"+s+" .a, #"+s+" .wire").forEach((el,i)=>{if(d[i]!==undefined)el.style.animationDelay=d[i]+"s"})}
 document.fonts.ready.then(()=>document.getElementById(s).classList.add("on"));
