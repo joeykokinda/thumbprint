@@ -17,7 +17,11 @@ const ICONS = {
 function visibleText(node) {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (node.nodeName === "IMG") return node.alt || "";
-  if (node.nodeName === "A" && /^https?:\/\/t\.co\//.test(node.href)) return ` https://${node.textContent.replace(/^https?:\/\//, "")} `;
+  if (node.nodeName === "A" && /^https?:\/\/t\.co\//.test(node.href)) {
+    const expanded = node.getAttribute("data-expanded-url") || node.getAttribute("title") || "";
+    // An unresolved t.co URL must not match the expanded URL the author approved.
+    return /^https?:\/\/\S+$/.test(expanded) && !/…|\.\.\./.test(expanded) ? expanded : node.href;
+  }
   const text = Array.from(node.childNodes, visibleText).join("");
   return node.dataset?.block ? text + "\n" : text; // the composer keeps each line in its own block
 }
@@ -376,7 +380,7 @@ async function requestApproval(handle, text) {
   let direct = await chrome.runtime.sendMessage({ type: "approve", handle, text }).catch(() => null);
   while ((!direct || direct.reason === "Server unreachable") && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    const [found] = (await chrome.runtime.sendMessage({ type: "lookup", items: [{ handle, hash }] }).catch(() => null)) || [];
+    const [found] = (await chrome.runtime.sendMessage({ type: "lookup", items: [{ handle, hash, postedAt: new Date().toISOString() }] }).catch(() => null)) || []; // only an approval given just now counts
     if (found?.state === "certified") direct = { ok: true };
   }
   return direct || { ok: false, reason: "Not approved in time" };

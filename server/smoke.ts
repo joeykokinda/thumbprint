@@ -1,52 +1,28 @@
-// End-to-end smoke test against a running dev server (THUMBPRINT_DEV=1): a throwaway key links a
-// handle, approves a post and the lookup finds it. Run with: bun server/smoke.ts
-import { createHash, generateKeyPairSync, sign } from "node:crypto";
-import * as anchor from "@coral-xyz/anchor";
-import { attestMessage, bindMessage } from "../phone/messages.ts";
-
+export {};
+// Read-only deployment smoke. Does not manufacture hardware approvals or spend demo funds.
 const SERVER = process.env.SERVER || "http://localhost:8787";
-const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-const owner = new anchor.web3.PublicKey(publicKey.export({ type: "spki", format: "der" }).subarray(-32)).toBase58();
-const act = async (action: object, message: string) =>
-  (await fetch(`${SERVER}/v1/act`, {
-    method: "POST",
-    body: JSON.stringify({ ...action, owner, message, signature: sign(null, Buffer.from(message), privateKey).toString("base64") }),
-  })).json() as Promise<any>;
-const expect = (label: string, condition: unknown, detail?: unknown) => {
-  console.log(condition ? "ok  " : "FAIL", label, condition ? "" : JSON.stringify(detail));
+const check = (label: string, condition: unknown) => {
+  console.log(`${condition ? "ok" : "FAIL"}  ${label}`);
   if (!condition) process.exitCode = 1;
 };
-
-const handle = "x:smoke_" + owner.slice(0, 8).toLowerCase();
-const text = "smoke test post";
-const stolen = await act({ kind: "bind", handle, proof: "https://x.com/jack/status/20" }, bindMessage(handle, owner));
-expect("a post without the device's code does not link a handle", stolen.error, stolen);
-const bound = await act({ kind: "bind", handle }, bindMessage(handle, owner));
-expect("links a handle", bound.ok, bound);
-const attested = await act({ kind: "attest" }, attestMessage(handle, text));
-expect("records an approval", attested.ok, attested);
-const replayed = await act({ kind: "attest" }, attestMessage(handle, text));
-expect("a repeated approval is answered from the record, not paid for again", replayed.signature === attested.signature, replayed);
-const hash = createHash("sha256").update(text).digest("hex");
-const [found] = (await (await fetch(`${SERVER}/v1/lookup`, { method: "POST", body: JSON.stringify([{ handle, hash }]) })).json()) as any[];
-expect("lookup finds the approved post", found.state === "certified", found);
-
-// A post naming a Solana address records that address where any wallet can check it.
-const mint = anchor.web3.Keypair.generate().publicKey.toBase58();
-const announced = await act({ kind: "attest" }, attestMessage(handle, `Our only token is ${mint}`));
-expect("approves a post that names an address", announced.ok, announced);
-const [quoted] = (await (await fetch(`${SERVER}/v1/lookup`, { method: "POST", body: JSON.stringify([{ handle: "x:someone_else", hash: "", addresses: [mint] }]) })).json()) as any[];
-expect("anyone's post naming that address shows who approved it", quoted.addresses?.[0]?.handle === handle, quoted);
-const record = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), new anchor.web3.PublicKey(mint).toBuffer()], new anchor.web3.PublicKey("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS"))[0].toBase58();
-const onchain = record && (await new anchor.web3.Connection("https://api.devnet.solana.com").getAccountInfo(new anchor.web3.PublicKey(record)));
-expect("the record is an account on Solana", onchain, record);
-
-// The kill switch is stored onchain, where the check any transaction can carry reads it.
-console.log(`     check page: ${SERVER}/check?address=${mint}`);
-await Bun.sleep(Number(process.env.PAUSE || 0) * 1000); // time to watch the page flip
-const { flagMessage } = await import("../phone/messages.ts");
-const flagged = await act({ kind: "flag", compromised: true }, flagMessage(handle, true, 0));
-expect("reports the account as taken over", flagged.ok, flagged);
-const status = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("status"), Buffer.from(handle)], new anchor.web3.PublicKey("EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS"))[0];
-const stored = await new anchor.web3.Connection("https://api.devnet.solana.com", "confirmed").getAccountInfo(status);
-expect("the report is stored on Solana", stored?.data[8] === 1, status.toBase58());
+for (const path of ["/", "/phone", "/phone.js", "/pay", "/payment.js", "/demo", "/demo-evidence.json", "/idl.json"]) {
+  const response = await fetch(SERVER + path);
+  check(`${path} is available`, response.ok);
+}
+for (const [path, body] of [
+  ["/v1/lookup", { invalid: true }],
+  ["/v1/act", { kind: "forged" }],
+  ["/v1/enrollment/verify", { id: "missing", certificates: [], signature: "fake" }],
+] as const) {
+  const response = await fetch(SERVER + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  check(`${path} rejects invalid input`, response.status === 400 && Boolean((await response.json() as any).error));
+}
+const handle = process.env.HANDLE;
+if (handle) {
+  const record = await (await fetch(`${SERVER}/v1/project?handle=${encodeURIComponent(handle)}`)).json() as any;
+  check("project has an explicit onchain approval", record.handle === handle && Boolean(record.record));
+  if (record.evidence) {
+    const evidence = await (await fetch(`${SERVER}/v1/enrollment/evidence/${record.evidence}`)).json() as any;
+    check("public hardware evidence matches the approval", evidence.evidence === record.evidence && evidence.policy === "thumbprint-biometric-v2");
+  }
+}

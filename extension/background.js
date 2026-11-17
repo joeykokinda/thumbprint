@@ -1,5 +1,23 @@
 // All network access for the extension. The content script only talks to this worker.
 importScripts("shared.js");
+importScripts("verify.js");
+
+const verifiedPosts = new Map();
+async function verifyLookups(items, results) {
+  if (!Array.isArray(results)) return null;
+  return Promise.all(results.map(async (result, index) => {
+    if (result.state !== "certified") return result;
+    const item = items[index];
+    if (!item || !result.signature) return { state: "none" };
+    const key = `${result.signature}|${item.handle}|${item.hash}|${item.postedAt}`;
+    try {
+      const proof = verifiedPosts.get(key) || await verifyThumbprintPost(result.signature, item.handle, { hash: item.hash, postedAt: item.postedAt ?? null });
+      if (verifiedPosts.size > 500) verifiedPosts.clear();
+      verifiedPosts.set(key, proof);
+      return { ...result, timestamp: proof.timestamp, sgtMint: proof.sgtMint };
+    } catch { return { state: "none", verificationUnavailable: true }; }
+  }));
+}
 
 // For local development: chrome.storage.local.set({ server: "http://localhost:8787" }) from the worker console.
 const DEFAULT_SERVER = "https://thumbprint.pyras.org";
@@ -31,7 +49,7 @@ async function post(path, body) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const work =
     message.type === "lookup"
-      ? post("/v1/lookup", message.items)
+      ? post("/v1/lookup", message.items).then(results => verifyLookups(message.items, results))
       : message.type === "approve"
         ? settings().then(async ({ session }) =>
             post("/v1/approve", { session, handle: message.handle, text: message.text, hash: await sha256Hex(message.text) })

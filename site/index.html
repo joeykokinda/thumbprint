@@ -345,16 +345,16 @@
 
   <div class="band">
     <div class="hero pad">
-      <div class="label"><i class="sq"></i>One phone · One fingerprint · Every post</div>
-      <h1>Your account can be hacked. <span>Your identity can't.</span></h1>
-      <p class="lede">Crypto accounts on X approve every post with a fingerprint on a Solana Seeker. When someone takes over the account, their posts show up as not signed, and the drainer link is blocked.</p>
+      <div class="label"><i class="sq"></i>Verified hardware approval · Enforced on Solana</div>
+      <h1>Steal the account. <span>The payment still checks.</span></h1>
+      <p class="lede">Approve your project’s treasury destination on a Seeker. Followers verify it directly on Solana, and protected payments reject a substituted recipient—even when someone else controls your X session.</p>
       <div class="actions">
-        <a class="btn" href="#install">Get the extension <i class="arrow"></i></a>
-        <a class="btn ghost" href="#how">See how it works</a>
+        <a class="btn" href="/demo">See the attack fail <i class="arrow"></i></a>
+        <a class="btn ghost" href="/pay">Verify a project</a>
       </div>
     </div>
     <div class="pad" style="padding-bottom:56px">
-      <div class="scene" aria-label="Animated walkthrough: a post approved by fingerprint, then a hijacked account">
+      <p class="label" style="margin-bottom:12px">Illustrated X scenario · real transaction evidence in the demo</p><div class="scene" aria-label="Illustrated scenario: a post approved by fingerprint, then a hijacked account">
         <div id="hero-phone"></div>
         <figure class="window" id="scene-window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren<span id="scene-who"></span></div><div class="x" id="scene-feed"></div>
           <div class="hack" aria-hidden="true"><div class="hack-card">
@@ -423,7 +423,7 @@
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="signed"></div></figure>
       </div>
       <div class="step reveal">
-        <div><span class="label"><span class="num">04</span>Addresses</span><h3>The real token address, and only the real one</h3><p>When an approved post names a Solana address, that address is recorded on Solana as official for the account. Readers see it marked green in anyone's post. A different address from the same account gets a red warning, and any wallet can run the same check before you buy. <a href="/check">Check an address yourself ↗</a></p></div>
+        <div><span class="label"><span class="num">04</span>Addresses</span><h3>Approve the destination explicitly</h3><p>A dedicated approval names the treasury recipient, purpose, and expiry. Mentioning an address in a post grants nothing. The protected payment checks its actual recipient against that approval before funds move. <a href="/pay">Inspect a protected payment ↗</a></p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="address"></div></figure>
       </div>
       <div class="step alert reveal">
@@ -431,7 +431,7 @@
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="hijacked"></div></figure>
       </div>
       <div class="step alert reveal">
-        <div><span class="label"><span class="num">06</span>Kill switch</span><h3>One tap warns everyone</h3><p>The owner taps "My account was hacked" on the Seeker. Every reader sees the warning on the profile right away, even while the attacker still holds the X session. The report is stored on Solana, so a swap or claim that checks it fails until the owner is back.</p></div>
+        <div><span class="label"><span class="num">06</span>Kill switch</span><h3>Suspend without the X login</h3><p>The owner signs an emergency suspension on the Seeker. Once confirmed on Solana, protected payments fail even for the previously approved recipient. Extension readers can also see the report while the attacker still controls X.</p></div>
         <figure class="window" style="margin:0"><div class="bar"><span class="dots"><i></i><i></i><i></i></span>x.com / 0xmaren</div><div class="x" data-mock="banner"></div></figure>
       </div>
     </div>
@@ -450,11 +450,11 @@
   </div>
 
   <div class="band why" id="chain">
-    <div class="pad why-head"><h2>Why you can trust the green mark.</h2><p>You don't have to trust X, and you don't have to trust us. Every approval is checked and stored on Solana, where anyone can look.</p></div>
+    <div class="pad why-head"><h2>The approval has evidence.</h2><p>Readers check post transactions and payment authorization directly with Solana. Hardware enrollment verifies Android attestation off-device; the program requires that verifier’s co-signature.</p></div>
     <div class="why-grid">
-      <div class="reveal"><span class="why-num">01</span><h3>It can't be faked</h3><p>Your phone signs the exact words of your post. Solana checks that signature before it records anything. Change one letter and it no longer matches.</p></div>
-      <div class="reveal"><span class="why-num">02</span><h3>One phone, one account</h3><p>Every Seeker is born with a one-of-a-kind token. Your account is tied to your phone and nobody else's, so there can't be a second "you".</p></div>
-      <div class="reveal"><span class="why-num">03</span><h3>Wallets can check too</h3><p>Every record is public. Before you buy, any wallet or app can ask Solana "did this account's phone approve this address?" No login, no asking us.</p></div>
+      <div class="reveal"><span class="why-num">01</span><h3>The exact approval is checked</h3><p>The phone signs the full post text and URLs. Solana checks its P-256 signature; readers independently verify the confirmed transaction. An edited URL cannot inherit the original approval.</p></div>
+      <div class="reveal"><span class="why-num">02</span><h3>One phone, one account</h3><p>The wallet links your handle, then enrolls an attested hardware key. A replacement must pass the same verification and invalidates existing payment approvals. The enrollment receipt is public.</p></div>
+      <div class="reveal"><span class="why-num">03</span><h3>The payment enforces it</h3><p>The guarded payment instruction checks the actual recipient, expiry, revocation, key generation, and suspension at execution. The public payment page reads the records directly from Solana.</p></div>
     </div>
     <a class="why-foot pad label" href="https://explorer.solana.com/address/EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS?cluster=devnet" target="_blank" rel="noopener"><span>See the program on Solana</span><b>EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS ↗</b></a>
   </div>
@@ -484,9 +484,9 @@
   const NAME = "Maren", HANDLE = "@0xmaren";
   const POSTS = {
     bag: { time: "now", stats: ["12", "41", "386", "9.2K"], text: "Not selling. Added to my SOL bag this morning. Same thesis as last cycle.", signed: true },
-    rule: { time: "2h", stats: ["214", "1.8K", "6.4K", "412K"], text: "Reminder: I will never DM you first, and I do not have a token. If a post has no green mark, it is not me.", signed: true },
+    rule: { time: "2h", stats: ["214", "1.8K", "6.4K", "412K"], text: "Reminder: I will never DM you first, and I do not have a token. Check the signed approval before acting on a payment request.", signed: true },
     call: { time: "5h", stats: ["97", "305", "2.9K", "188K"], text: "Rotated out of memes into majors. Thread tomorrow on why.", signed: true },
-    launch: { time: "1h", stats: ["388", "2.4K", "9.1K", "640K"], text: "$MAREN is live. The only address:", address: "MRNx4kQ9vTz2hW8LpYc6sBf3uJd7aNe5gRt1oZiXyPqV", signed: true },
+    launch: { time: "1h", stats: ["388", "2.4K", "9.1K", "640K"], text: "$MAREN is live. Treasury explicitly approved for payments:", address: "MRNx4kQ9vTz2hW8LpYc6sBf3uJd7aNe5gRt1oZiXyPqV", signed: true },
     fakeMint: { time: "now", stats: ["5", "31", "88", "3.4K"], text: "New $MAREN contract, old one is paused. Buy here:", address: "MRNx9fPz3LkW7cTb2Qy8HsVd5uJa4Ne6gRt1oZiXpump", signed: false },
     drainer: { time: "now", stats: ["3", "19", "54", "2.1K"], text: "It's finally here. $MAREN presale is live for 1 hour. Send SOL to get in early:", link: "maren-presale.xyz", signed: false },
   };
@@ -527,7 +527,7 @@
     if (item.address && item.signed) {
       // Same words as extension/content.js markAddresses.
       const row = el("div", "xaddress");
-      row.innerHTML = "<span class='xmark'>" + PRINT + "</span><b>Official address</b><code>" + item.address.slice(0, 4) + "…" + item.address.slice(-4) + "</code><a>Check onchain ↗</a><small>approved by fingerprint, recorded on Solana</small>";
+      row.innerHTML = "<span class='xmark'>" + PRINT + "</span><b>Approved treasury</b><code>" + item.address.slice(0, 4) + "…" + item.address.slice(-4) + "</code><a>Check onchain ↗</a><small>approved by fingerprint, recorded on Solana</small>";
       body.append(row);
     }
     if (options.card) {

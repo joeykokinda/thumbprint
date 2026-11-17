@@ -1,198 +1,179 @@
 # Thumbprint
 
-Your account can be hacked. Your identity can't.
+A stolen X session should not be enough to authorize a project's payments.
 
-Crypto accounts on X approve each post with a fingerprint on a Solana Seeker. A Chrome
-extension shows readers which posts were approved, and warns when an account that signs its
-posts publishes one that was not: the hijacked account posting a drainer link.
+Thumbprint separates a project's social login from its approval key. The Seeker
+holds a hardware-protected P-256 signing key. Enrollment validates Android key
+attestation off-device, including hardware-enforced biometric authentication for
+every signature. Solana verifies subsequent signatures and enforces explicit
+payment destination approvals.
 
-**Live: [thumbprint.pyras.org](https://thumbprint.pyras.org)**. Built for the UBC 2026 hackathon. Runs on Solana devnet.
+Public deployment: [thumbprint.pyras.org](https://thumbprint.pyras.org).
+Network: **Solana devnet; test funds only**.
 
-The extension talks to the live server out of the box, so loading it is enough to see marks on X.
+Build progress, acceptance criteria and open items: [TODO.md](TODO.md).
+Hardware policy and setup: [attestation/README.md](attestation/README.md).
 
-## What it does
+## Evidence on devnet
 
-- **Link once.** The owner publishes one post carrying their device's code, then confirms in the
-  Seeker's wallet. That hands approval to a key inside the Thumbprint app that only a
-  fingerprint can use. One Seeker protects one handle.
-- **Approve each post.** A small button next to Post in X's composer sends the draft to the
-  paired Seeker. The phone shows the text, with each link reduced to the site it points to, the
-  owner approves with a fingerprint, the approval lands on Solana, and the extension presses Post.
-- **Read.** Approved posts get a fingerprint mark next to the author's name. Hovering shows when
-  and on which device, with a link to a public proof page.
-- **Official addresses.** When an approved post names a Solana address (a token mint, a
-  contract), the program records it in an account at a known address. The extension marks that
-  address green in anyone's post, and warns when the same account posts a different one unsigned.
-  A wallet or another program can make the same check with no server involved, and
-  [thumbprint.pyras.org/check](https://thumbprint.pyras.org/check) does exactly that from the browser.
-- **Warn.** A post with no approval, from an account that signs, is marked "Not signed". If it
-  carries links they are blocked until the reader chooses to open them.
-- **Kill switch.** One tap on the Seeker marks the account compromised for every reader, even
-  while someone else controls the X session: a warning on the profile, and on every post made
-  without the device.
+Every result below is a real transaction that anyone can inspect.
 
-Readers need only the extension. Only accounts that want protection need a Seeker.
+| What happened | Transaction |
+| --- | --- |
+| A buyer paid 1,000 lamports to the treasury the Seeker approved | [4MoSozd2…](https://explorer.solana.com/tx/4MoSozd2LwrkbaAw6EWaZSPWhZjfjDogkLJSnt9CzjbBYdWiM3XYjshrPW2YrgooVonN8btLxmFAUiQq98HQe8PW?cluster=devnet) |
+| The same payment with a substituted recipient failed `WrongRecipient` and moved nothing | [xS7pap2Z…](https://explorer.solana.com/tx/xS7pap2ZAaybiMJMB3TL9aYvEpDBJ3y26u8uKCq2HBSaAoqEfrgYL6tr7bMD2chmnpWrZvyebRzjJkXvGk7Wuar?cluster=devnet) |
 
-The claim is narrow: the holder of a specific Seeker physically approved this exact text for
-this handle. It does not say who wrote the text or whether it is true.
+The enrolled key was generated on a physical Seeker and its Android attestation
+chain was validated off-device. The receipt is served at
+`/v1/enrollment/evidence/<digest>` and its digest is stored onchain. `/demo`
+shows these results without a wallet or an extension.
+
+## Core flow
+
+1. Connect the Seeker wallet and prove control of the project's X handle.
+2. Generate an attested biometric key. The server checks its certificate chain,
+   Google trust roots and live revocation status, app signing identity, locked
+   verified boot, hardware origin, and biometric-only per-operation signing policy.
+3. Prove possession with a biometric signature. The wallet approves the exact key
+   and evidence digest; the enrollment verifier co-signs its onchain registration.
+4. Explicitly approve a treasury recipient for up to seven days. The app defaults
+   to 24 hours and shows the complete signed message in a native review screen.
+5. Open `/pay?handle=x:project`. The page reads authorization directly from Solana.
+   Its `pay` instruction validates the actual transfer recipient, expiry,
+   revocation, key generation, and emergency suspension before transferring SOL.
+6. Revoke or replace a destination, suspend payments, or recover onto another
+   attested key. Key replacement invalidates earlier destination approvals and
+   cannot remove a suspension or resurrect a revoked approval.
+
+Post approval is separate: signing “Do not buy ADDRESS” never authorizes ADDRESS.
+Signed post text retains complete URL paths and queries. The extension uses full
+expanded-link metadata when available; it cannot mark a truncated/unresolved
+link as matching the author's full signed URL.
+
+### One fingerprint per publication
+
+The signed post text travels inside the approval transaction itself, so the exact
+words are on Solana and the proof page reads them from there, not from our server.
+Each approval carries a counter that the program consumes, so a captured signature
+cannot be submitted a second time. Readers then compare X's own publication time
+with the approval's block time: a mark is shown only for a post published within
+15 minutes after its approval. Reposting the same words later needs a new
+fingerprint. An attacker holding the X session can at most repeat the already
+approved text inside that window.
 
 ## Architecture
 
-```
- X composer (laptop)            Seeker (Chrome + Seed Vault)         Solana devnet
- extension/content.js  --text--> phone/app.ts                         programs/thumbprint
-        |                          shows text, signs a readable             ^
-        |                          message with a fingerprint               |
-        v                                   |                               |
- server/index.ts  <----- message + signature                               |
-   relay, fee payer  ---- transaction: Ed25519 proof + program call -------+
-   indexer, lookup   <--- QuickNode Stream (program transactions) ---------+
-        ^
-        |  lookup(handle, sha256(text))
- extension on every reader's timeline
-```
-
-| Part | Path | Role |
+| Part | Path | Responsibility |
 | --- | --- | --- |
-| Program | `programs/thumbprint` | Anchor program: `bind`, `attest`, `endorse`, `check`, `set_compromised`, `set_approver` |
-| Server | `server/` | Bun: pairing relay, fee payer, indexer, lookup API, proof pages |
-| Phone page | `phone/` | The app's screen; in Chrome it does the one wallet step through Mobile Wallet Adapter |
-| App | `android/` | Android app: the phone page plus a fingerprint-only Ed25519 key in secure hardware |
-| Extension | `extension/` | Manifest V3 Chrome extension for x.com |
-| Stream filter | `quicknode/filter.js` | QuickNode Stream filter function |
+| Android app | `android/` | Attested P-256 key, native message review, per-operation biometric prompt, X reader tab |
+| Phone UI | `phone/` | Wallet linking, enrollment, post approval, destination approval, revocation, suspension |
+| Enrollment verifier | `attestation/` | Google's maintained verifier plus Thumbprint's app and authentication policy |
+| Relay/indexer | `server/` | Handle proof, enrollment challenges/tickets, fee payer, receipts, post lookup |
+| Solana program | `programs/thumbprint/` | Wallet/attested-key signature verification, authorization state, guarded transfers |
+| Reader UI | `extension/`, `site/` | X marks, public evidence, direct-RPC protected payment page |
+| Stream | `quicknode/` | QuickNode program-transaction filter and authenticated webhook ingestion |
 
-## How Solana is used
+Program ID: `EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS`.
+Wallet messages use the Ed25519 precompile; biometric messages use Solana's
+secp256r1/P-256 precompile with canonical low-S signatures. Signed control messages
+include the network, deployment ID, action, and counter. The program binds the
+payment check to the actual recipient of its own System Program transfer CPI.
 
-Program ID (devnet): `EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS`
+The wallet can only link a handle and, together with the enrollment verifier,
+register an attested key. It cannot approve posts, destinations or suspension:
+those need the fingerprint key. There is no instruction that turns an address
+mentioned in a post into a payment approval.
 
-- **The device signs words, the program checks them.** The Seed Vault wallet only signs
-  transactions for the network it is set to, and the Genesis Token lives on mainnet. So the
-  Seeker signs a readable message, for example `Thumbprint: approve this post as x:name` followed
-  by the post text. The server puts that signature in an Ed25519 precompile instruction and the
-  program reads it back through the instructions sysvar, checking the key and rebuilding the
-  expected message itself. The post hash that is recorded is computed onchain from the signed
-  text. The device account stores the wallet that linked it and every later action must carry
-  that wallet's signature, so the server pays fees but cannot record anything the device did
-  not sign.
-- **Seeker Genesis Token.** A device is identified by its Genesis Token mint, and its account is
-  a PDA of that mint: one device, one handle. The program verifies the token (Token-2022 group
-  member of the Genesis group, held by the signer). On devnet that check is compiled out with
-  the `devnet` feature because the token only exists on mainnet, and the indexer performs the
-  same check against mainnet over RPC. The localnet tests run the real check against a Genesis
-  Token mint cloned from mainnet.
-- **Handle claims.** A handle is a PDA, so it can be linked once. Linking also needs the
-  verifier key's signature, which the server gives only after reading a public post from that
-  handle carrying the device's code (`server/proof.ts`).
-- **Fingerprint only.** The Seed Vault wallet accepts a PIN, and a PIN can be typed by a script
-  or a thief. So the wallet signs once, at linking, to name an approval key (`Device.approver`).
-  That key is generated inside the phone's secure hardware by the app (`android/`), cannot be
-  exported, signs only after a fingerprint match, and is destroyed if a fingerprint is added to
-  the phone. `attest` and `set_compromised` accept that key alone; `set_approver` lets the
-  wallet move approval to a new key if it is lost.
-- **Addresses other programs can read.** `endorse(address)` is `attest` for a post that names a
-  Solana address. The program checks that the address appears in the text the fingerprint key
-  signed, then creates an `Endorsement` account at seeds `["address", handle, address]`. Anyone
-  can derive that address and see whether it exists: a wallet before a swap, or a program
-  through an account constraint. The server chooses which instruction to send but cannot
-  record an address the owner did not approve. `GET /v1/address/<address>` is the same lookup
-  over HTTP.
-- **Kill switch.** `set_compromised` signs a message with a counter stored on the device
-  account, so a captured signature cannot be replayed. The result is stored in a `Status`
-  account at seeds `["status", handle]`.
-- **A check anyone's transaction can carry.** `check(handle, address)` fails with
-  `NeverApproved` or `ReportedCompromised` unless the handle's phone approved that address and
-  the account is not reported as taken over. Put in front of a swap, claim or mint, it reverts
-  the whole transaction; a program can instead take the two accounts in its own constraints.
-  `site/check.html` runs it as a dry run against a public RPC node, with no Thumbprint server.
+## Local setup
 
-## QuickNode Stream
-
-The indexer's data source is one Stream:
-
-- **Network:** Solana devnet
-- **Dataset:** Block
-- **Filter:** `quicknode/filter.js`. Keeps successful transactions whose logs show an invoke of
-  the Thumbprint program, forwards `{ signature, blockTime, logs }` for each, and returns `null`
-  for every other block.
-- **Destination:** webhook, `POST {PUBLIC_URL}/v1/stream?token={STREAM_TOKEN}`. The server
-  decodes the Anchor events in the logs (`Bound`, `Attested`, `Flagged`) and updates the lookup
-  table the extension reads.
-
-With `STREAM_TOKEN` set, the Stream is the only way records reach the server: the RPC poller
-is off and the server does not read back its own transactions. Without it, the server polls
-the public RPC, which is what local development uses.
-
-## Setup
-
-Needs [Bun](https://bun.sh), pnpm and Chrome. The program also needs Rust, the Solana CLI,
-Anchor 0.31.1 and Node 22.18 or newer (the tests run as TypeScript under `node --test`).
+Requires Bun, pnpm, JDK 21, the Android SDK, Rust, Solana CLI, Anchor 0.31.1,
+and Node 22.18 or newer for contract tests.
 
 ```sh
-git clone https://github.com/joeykokinda/thumbprint && cd thumbprint
 pnpm install
-bun test                                  # link normalization, proof post, Stream filter
-THUMBPRINT_DEV=1 bun server/index.ts      # http://localhost:8787, uses the deployed devnet program
+./attestation/build.sh
+# Build the release APK; existing app signing keystore is reused.
+android/build.sh
+# Read the public signing certificate fingerprint, not the APK file hash:
+$ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs site/thumbprint.apk
+# Configure THUMBPRINT_APP_SHA256 with that SHA-256 certificate fingerprint.
+THUMBPRINT_APP_SHA256=<certificate-fingerprint> bun server/index.ts
 ```
 
-**See it on x.com without a phone.** Load the extension (`chrome://extensions`, Developer mode,
-Load unpacked, pick `extension/`), then seed records on the dev server:
+The server defaults to port 8787. Its payer/verifier key defaults to
+`~/.config/solana/id.json`; the deployed program only accepts its configured
+verifier. Running your own deployment requires configuring that verifier and
+synchronizing the program ID/IDL. Do not commit signing material.
+
+For an isolated phone preview, `THUMBPRINT_ORIGIN=http://localhost:8791
+android/build.sh` produces a test APK with loopback cleartext access and WebView
+debugging enabled. Use `adb reverse tcp:8791 tcp:8791`. The release build uses the
+public HTTPS origin, disables WebView debugging, and does not enable cleartext.
+The test build uses the same app/key storage; replacing the biometric key still
+requires wallet-authorized registration. Keep preview APKs separate from release artifacts.
+
+## Verification
 
 ```sh
-bun server/dev.ts certify x:somehandle "the exact text of one of their posts"   # green mark
-bun server/dev.ts protect x:somehandle                                          # their other posts read as not signed
+bun test                       # exact URL binding, signature encoding, amount parsing, input validation
+pnpm exec tsc --noEmit
+anchor test                    # actual P-256 proofs and transfers on localnet
+android/build.sh
 ```
 
-**Run the real flow.** The deployed program only accepts new links co-signed by our verifier
-key, so to link accounts yourself deploy your own copy:
+Contract integration tests cover verifier-gated enrollment, replay of enrollment,
+destination and post approvals, wallet/PIN
+signatures being rejected as approvals, modified messages, negative address
+mentions, mismatched recipient/handle/deployment, expiry bounds, actual balances,
+revocation, replacement, suspension, execution-time expiry, and key rotation.
+Localnet tests use a verifier-controlled test key to exercise the onchain policy;
+they do not substitute for physical hardware attestation tests.
 
-```sh
-solana-keygen new -o target/deploy/thumbprint-keypair.json --force
-anchor keys sync                          # writes the new program ID into lib.rs and Anchor.toml
-# put your wallet's address in VERIFIER (devnet) in programs/thumbprint/src/lib.rs
-anchor build -- --features devnet && cp target/idl/thumbprint.json server/idl.json
-solana program deploy target/deploy/thumbprint.so --program-id target/deploy/thumbprint-keypair.json -u devnet
-THUMBPRINT_DEV=1 bun server/index.ts
-bun server/smoke.ts                       # links a throwaway key, approves a post, looks it up
-```
+Use tiny payments into already funded demo recipients. A previously nonexistent
+recipient may need the network's minimum rent-exempt funding, even for a valid
+transfer. Program upgrades temporarily fund a deployment buffer; the buffer's
+rent returns after the upgrade, while increased program storage remains funded.
 
-The server pays fees and rent from `~/.config/solana/id.json`; fund it at
-[faucet.solana.com](https://faucet.solana.com).
+## Configuration
 
-**App.** `android/build.sh` builds `site/thumbprint.apk` with the Android SDK build tools alone
-(no Gradle); install it with `adb install`. It loads the live server's phone page.
+| Variable | Purpose |
+| --- | --- |
+| `PORT`, `PUBLIC_URL`, `DATABASE` | HTTP listener, public links, SQLite index/evidence |
+| `PAYER_KEYPAIR` | Fee payer and enrollment/handle verifier |
+| `THUMBPRINT_APP_SHA256` | Required expected APK signing certificate SHA-256 fingerprint |
+| `PROGRAM_RPC`, `MAINNET_RPC` | Program network and Genesis Token ownership checks |
+| `STREAM_TOKEN` | Authenticates QuickNode webhook; disables polling fallback when set |
+| `POLL=0` | Disables polling, useful for isolated local tests |
+| `X_CONSUMER_KEY`, `X_CONSUMER_SECRET` | Optional X sign-in; otherwise use a public proof post |
+| `THUMBPRINT_DEV=1` | Enables local preview routes and test token lookup; **does not bypass hardware verification and cannot seed approved marks** |
 
-**Phone.** With a Seeker on USB, `adb reverse tcp:8787 tcp:8787`, then scan the pairing code in
-the extension popup. Without a Seeker, open
-`http://localhost:8787/phone?session=test&signer=software` for a test key held by the page
-(dev mode only).
+QuickNode Streams remains an optional deployment integration until a live Stream
+is configured and verified. Without `STREAM_TOKEN`, the server polls program
+transactions. Financial authorization is always enforced by onchain state.
 
-**Program tests.** `anchor test` runs on localnet with the real Genesis Token check, against a
-Genesis Token mint cloned from mainnet.
+## Security boundaries
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `THUMBPRINT_DEV` | off | `1` allows the test signer, linking without a proof post, and `/dev/*` routes |
-| `PORT` | `8787` | Port to listen on |
-| `PUBLIC_URL` | `http://localhost:8787` | Address used in pairing codes and proof links |
-| `DATABASE` | `thumbprint.sqlite` | Index file |
-| `PAYER_KEYPAIR` | `~/.config/solana/id.json` | Fee payer and verifier key |
-| `X_CONSUMER_KEY`, `X_CONSUMER_SECRET` | unset | Turns on "Sign in with X" for proving handle control (callback `{PUBLIC_URL}/auth/x/callback`); without them linking uses a proof post |
-| `STREAM_TOKEN` | unset | Shared secret for the QuickNode webhook; makes the Stream the only data source |
-| `POLL` | on | `0` turns off the RPC polling fallback |
-| `PROGRAM_RPC`, `MAINNET_RPC` | public endpoints | RPC for the program and for the Genesis Token check |
-
-## Limits
-
-- Only Seeker owners can sign, and only readers with the extension see anything.
-- One trusted verifier vouches for handle control, and it reads X's public embed endpoint.
-- Links are bound by domain, not full path, because X rewrites them.
-- Someone who holds the phone and knows the wallet PIN can move approval to a key of their own.
-- The kill switch is also a lever: whoever can use it can make checked transactions fail.
-- One address is recorded per post, there is no way to withdraw one, and no wallet reads these records yet.
-- The extension depends on X's page structure.
-- A post longer than one transaction can carry (about 600 bytes) cannot be approved yet.
-- Posts cut off by "Show more" get no mark in the timeline.
+- A project must enroll before its social account is compromised. Handle control
+  at enrollment does not establish the historical human owner's identity.
+- Hardware registration trusts the enrollment verifier to check Android evidence.
+  The program verifies its co-signature, not the certificate chain itself. Evidence
+  digests are stored onchain and evidence receipts are available for inspection.
+- Seeker Genesis Tokens live on mainnet. The devnet build checks their ownership
+  through the enrollment/indexing server; the localnet build tests the real token
+  validation with a cloned mainnet mint.
+- Biometrics authenticate use of the key. They do not prove who wrote a post,
+  that a project is honest, that a linked website stays unchanged, or that investing
+  is safe. Hardware attestation does not eliminate all device/OS compromise risks.
+- Protection applies to the guarded payment instruction. An unrelated wallet
+  transaction can omit it. No external wallet-wide scam-warning integration is claimed.
+- Only extension/app readers see X marks. X layout changes and incomplete link
+  metadata can prevent verification; missing approval is not proof of a hack.
+- The publication check relies on the time X reports for a post. A post edited on
+  X long after its approval needs a new approval to keep its mark.
+- Message size is bounded by a single Solana transaction. The trusted native review
+  prevents approving truncated text, and cancellation produces no signature.
+- Losing both the approval device and recovery-wallet authority prevents recovery.
 
 ## License
 
-MIT
+MIT. Google's downloaded verifier remains under its Apache-2.0 license.

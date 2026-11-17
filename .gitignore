@@ -7,3 +7,4 @@ test-ledger
 .yarn
 *.sqlite
 android/build/
+attestation/build/

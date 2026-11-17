@@ -10,8 +10,10 @@
     {
       "name": "attest",
       "docs": [
-        "Records that the device bound to a handle approved one exact post. The device signs the",
-        "post text itself, and the hash recorded here is computed from that signed text."
+        "Records that the enrolled fingerprint key approved one exact post. The key signs the post",
+        "text itself and the hash recorded here is computed from that signed text. The counter",
+        "makes each signature single use, so a captured approval cannot be submitted again later",
+        "to make an old approval look fresh."
       ],
       "discriminator": [
         83,
@@ -60,6 +62,30 @@
           }
         },
         {
+          "name": "hardware",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  114,
+                  100,
+                  119,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device"
+              }
+            ]
+          }
+        },
+        {
           "name": "instructions",
           "address": "Sysvar1nstructions1111111111111111111111111"
         }
@@ -71,9 +97,8 @@
       "docs": [
         "One device, one handle. `handle` is \"platform:name\", lowercase, e.g. \"x:someone\".",
         "",
-        "`approver` is the key that will approve posts from now on. In the Thumbprint app it lives",
-        "in the phone's secure hardware and can only be used with a fingerprint, so the wallet",
-        "(which may accept a PIN) is needed just once, here, to prove this is a real Seeker."
+        "`approver` is kept for the wallet message and account layout only. Nothing can be",
+        "approved until `enroll_hardware` registers an attested fingerprint key."
       ],
       "discriminator": [
         178,
@@ -172,47 +197,236 @@
       ]
     },
     {
-      "name": "check",
+      "name": "enroll_hardware",
       "docs": [
-        "For anyone else's transaction: fails unless the handle's phone approved this address and",
-        "the owner has not reported the account as taken over. Put it in front of a swap, a claim",
-        "or a mint and the whole transaction reverts when the answer is no. Programs can instead",
-        "take the same two accounts in their own constraints."
+        "The verifier validates Android attestation and possession off-device before co-signing.",
+        "The owner also signs the exact key and evidence digest, preventing relay substitution."
       ],
       "discriminator": [
-        238,
-        251,
-        184,
-        43,
-        83,
-        233,
-        244,
-        65
+        142,
+        206,
+        202,
+        182,
+        109,
+        96,
+        120,
+        30
       ],
       "accounts": [
         {
-          "name": "endorsement",
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "verifier",
+          "signer": true,
+          "address": "5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z"
+        },
+        {
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  97,
                   100,
-                  100,
-                  114,
                   101,
-                  115,
-                  115
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hardware",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  114,
+                  100,
+                  119,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "key",
+          "type": {
+            "array": [
+              "u8",
+              33
+            ]
+          }
+        },
+        {
+          "name": "evidence",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "pay",
+      "docs": [
+        "Validation and the actual transfer share the same recipient account and instruction."
+      ],
+      "discriminator": [
+        119,
+        18,
+        216,
+        65,
+        192,
+        117,
+        122,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "recipient",
+          "writable": true
+        },
+        {
+          "name": "handle_claim",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  110,
+                  100,
+                  108,
+                  101
                 ]
               },
               {
                 "kind": "arg",
                 "path": "handle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "device",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "handle_claim.sgt_mint",
+                "account": "HandleClaim"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hardware",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  114,
+                  100,
+                  119,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authorization",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
               },
               {
                 "kind": "arg",
-                "path": "address"
+                "path": "handle"
               }
             ]
           }
@@ -238,109 +452,6 @@
               }
             ]
           }
-        }
-      ],
-      "args": [
-        {
-          "name": "_handle",
-          "type": "string"
-        },
-        {
-          "name": "_address",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "endorse",
-      "docs": [
-        "The same approval as `attest`, for a post that names a Solana address (a token mint, a",
-        "contract, a treasury). It also creates a small account at a known address, so a wallet",
-        "or another program can check \"did this handle's phone approve this address?\" by looking",
-        "for that account, without asking any server."
-      ],
-      "discriminator": [
-        2,
-        228,
-        252,
-        182,
-        105,
-        92,
-        40,
-        175
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "owner",
-          "relations": [
-            "device"
-          ]
-        },
-        {
-          "name": "sgt_token_account"
-        },
-        {
-          "name": "sgt_mint"
-        },
-        {
-          "name": "device",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  101,
-                  118,
-                  105,
-                  99,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "sgt_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "endorsement",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  100,
-                  100,
-                  114,
-                  101,
-                  115,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "device.handle",
-                "account": "Device"
-              },
-              {
-                "kind": "arg",
-                "path": "address"
-              }
-            ]
-          }
-        },
-        {
-          "name": "instructions",
-          "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
           "name": "system_program",
@@ -349,72 +460,12 @@
       ],
       "args": [
         {
-          "name": "address",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "set_approver",
-      "docs": [
-        "Moves approval to a new key, signed by the wallet that linked the device. Needed when the",
-        "fingerprint key is lost: Android destroys it if the enrolled fingerprints change."
-      ],
-      "discriminator": [
-        139,
-        202,
-        200,
-        122,
-        109,
-        173,
-        219,
-        116
-      ],
-      "accounts": [
-        {
-          "name": "owner",
-          "relations": [
-            "device"
-          ]
+          "name": "_handle",
+          "type": "string"
         },
         {
-          "name": "sgt_token_account"
-        },
-        {
-          "name": "sgt_mint"
-        },
-        {
-          "name": "device",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  101,
-                  118,
-                  105,
-                  99,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "sgt_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "instructions",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "approver",
-          "type": "pubkey"
+          "name": "lamports",
+          "type": "u64"
         }
       ]
     },
@@ -477,6 +528,30 @@
           }
         },
         {
+          "name": "hardware",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  114,
+                  100,
+                  119,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device"
+              }
+            ]
+          }
+        },
+        {
           "name": "status",
           "writable": true,
           "pda": {
@@ -515,9 +590,149 @@
           "type": "bool"
         }
       ]
+    },
+    {
+      "name": "set_destination",
+      "discriminator": [
+        153,
+        118,
+        17,
+        95,
+        172,
+        62,
+        206,
+        93
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "relations": [
+            "device"
+          ]
+        },
+        {
+          "name": "sgt_token_account"
+        },
+        {
+          "name": "sgt_mint"
+        },
+        {
+          "name": "device",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  118,
+                  105,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sgt_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hardware",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  97,
+                  114,
+                  100,
+                  119,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authorization",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "device.handle",
+                "account": "Device"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "recipient",
+          "type": "pubkey"
+        },
+        {
+          "name": "expires_at",
+          "type": "i64"
+        },
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "Authorization",
+      "discriminator": [
+        3,
+        68,
+        168,
+        243,
+        195,
+        168,
+        32,
+        75
+      ]
+    },
     {
       "name": "Device",
       "discriminator": [
@@ -532,19 +747,6 @@
       ]
     },
     {
-      "name": "Endorsement",
-      "discriminator": [
-        167,
-        137,
-        37,
-        17,
-        220,
-        102,
-        104,
-        52
-      ]
-    },
-    {
       "name": "HandleClaim",
       "discriminator": [
         148,
@@ -555,6 +757,19 @@
         234,
         115,
         190
+      ]
+    },
+    {
+      "name": "Hardware",
+      "discriminator": [
+        205,
+        156,
+        181,
+        72,
+        202,
+        110,
+        165,
+        120
       ]
     },
     {
@@ -599,16 +814,16 @@
       ]
     },
     {
-      "name": "Endorsed",
+      "name": "DestinationSet",
       "discriminator": [
-        86,
-        86,
-        39,
-        142,
-        32,
-        18,
-        56,
-        35
+        190,
+        91,
+        108,
+        103,
+        73,
+        174,
+        99,
+        114
       ]
     },
     {
@@ -623,51 +838,107 @@
         69,
         5
       ]
+    },
+    {
+      "name": "HardwareEnrolled",
+      "discriminator": [
+        73,
+        152,
+        130,
+        25,
+        111,
+        151,
+        119,
+        103
+      ]
+    },
+    {
+      "name": "Paid",
+      "discriminator": [
+        240,
+        193,
+        17,
+        238,
+        238,
+        210,
+        129,
+        235
+      ]
     }
   ],
   "errors": [
     {
       "code": 6000,
+      "name": "HardwareRequired",
+      "msg": "Enroll a verified biometric hardware key first"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidExpiry",
+      "msg": "Authorization expiry must be in the future and within seven days"
+    },
+    {
+      "code": 6002,
+      "name": "WrongRecipient",
+      "msg": "The actual payment recipient does not match the approved recipient"
+    },
+    {
+      "code": 6003,
+      "name": "Revoked",
+      "msg": "This destination approval has been revoked"
+    },
+    {
+      "code": 6004,
+      "name": "Expired",
+      "msg": "This destination approval has expired"
+    },
+    {
+      "code": 6005,
+      "name": "KeyChanged",
+      "msg": "Approve the destination again after changing the hardware key"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidAmount",
+      "msg": "Payment amount must be positive"
+    },
+    {
+      "code": 6007,
+      "name": "CounterOverflow",
+      "msg": "Action counter exhausted"
+    },
+    {
+      "code": 6008,
       "name": "NotSeeker",
       "msg": "Signer does not hold a Seeker Genesis Token"
     },
     {
-      "code": 6001,
+      "code": 6009,
       "name": "NotSigned",
       "msg": "The device did not sign this action"
     },
     {
-      "code": 6002,
+      "code": 6010,
       "name": "WrongMessage",
       "msg": "The signed message does not match this action"
     },
     {
-      "code": 6003,
+      "code": 6011,
       "name": "InvalidHandle",
       "msg": "Handle must be platform:name using a-z, 0-9, underscore or dot, at most 32 bytes"
     },
     {
-      "code": 6004,
+      "code": 6012,
       "name": "NotVerified",
       "msg": "Linking a handle needs the verifier's signature"
     },
     {
-      "code": 6005,
+      "code": 6013,
       "name": "NotOwner",
       "msg": "This device was linked by a different wallet"
     },
     {
-      "code": 6006,
-      "name": "AddressNotInPost",
-      "msg": "The approved post does not contain this address"
-    },
-    {
-      "code": 6007,
-      "name": "NeverApproved",
-      "msg": "This account's phone never approved this address"
-    },
-    {
-      "code": 6008,
+      "code": 6014,
       "name": "ReportedCompromised",
       "msg": "The owner reported this account as taken over"
     }
@@ -707,6 +978,38 @@
       }
     },
     {
+      "name": "Authorization",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "generation",
+            "type": "u64"
+          },
+          {
+            "name": "approved_at",
+            "type": "i64"
+          },
+          {
+            "name": "handle",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
       "name": "Bound",
       "type": {
         "kind": "struct",
@@ -727,6 +1030,34 @@
       }
     },
     {
+      "name": "DestinationSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "generation",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Device",
       "type": {
         "kind": "struct",
@@ -734,15 +1065,14 @@
           {
             "name": "owner",
             "docs": [
-              "The wallet that linked this device. Every later action must be signed by it."
+              "The wallet that linked this device. Only it can enroll or replace the fingerprint key."
             ],
             "type": "pubkey"
           },
           {
             "name": "approver",
             "docs": [
-              "The key that approves posts and the kill switch. Equal to `owner` when no separate",
-              "fingerprint key is used."
+              "Unused since approvals moved to the attested key in `Hardware`; kept for account layout."
             ],
             "type": "pubkey"
           },
@@ -752,65 +1082,11 @@
           },
           {
             "name": "flag_count",
+            "docs": [
+              "One counter for every signed action (posts, destinations, suspension, key enrollment),",
+              "so no signature can be used twice."
+            ],
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "Endorsed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "handle",
-            "type": "string"
-          },
-          {
-            "name": "address",
-            "type": "pubkey"
-          },
-          {
-            "name": "owner",
-            "type": "pubkey"
-          },
-          {
-            "name": "sgt_mint",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "Endorsement",
-      "docs": [
-        "Exists only if the handle's phone approved a post naming this address.",
-        "Address: seeds [\"address\", handle, address] under this program. `address` comes first so",
-        "\"who approved this address?\" is one fixed-offset filter over the program's accounts."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "address",
-            "type": "pubkey"
-          },
-          {
-            "name": "text_hash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "timestamp",
-            "type": "i64"
-          },
-          {
-            "name": "handle",
-            "type": "string"
           }
         ]
       }
@@ -847,6 +1123,94 @@
           {
             "name": "sgt_mint",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hardware",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "evidence",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "generation",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HardwareEnrolled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "key",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "evidence",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "generation",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Paid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "handle",
+            "type": "string"
+          },
+          {
+            "name": "recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
           }
         ]
       }

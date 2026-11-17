@@ -10,9 +10,9 @@
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol-web3js";
 import { PublicKey } from "@solana/web3.js";
 import "../extension/shared.js"; // normalizeText: the one rule that turns a post into the text that is signed
-import { approverMessage, attestMessage, bindMessage, flagMessage } from "./messages.ts";
+import { attestMessage, bindMessage, flagMessage, destinationMessage } from "./messages.ts";
 
-type Device = { owner: string; sgtMint: string; proofCode: string; xLogin: boolean; provenHandle: string | null; handle: string | null; approver: string | null; compromised: boolean; flagCount: number };
+type Device = { owner: string; sgtMint: string; proofCode: string; xLogin: boolean; provenHandle: string | null; handle: string | null; approver: string | null; compromised: boolean; flagCount: number; hardwareEvidence?: string; destination?: { state: string; recipient?: string; expiresAt?: number } };
 type PostRequest = { handle: string; text: string };
 type Signed = { owner: string; signature: Uint8Array };
 
@@ -80,16 +80,21 @@ async function software(message?: string): Promise<Signed> {
 }
 
 // The app's fingerprint key. `sign` shows the system fingerprint prompt with the message on it.
-const NATIVE = (window as any).ThumbprintKey as { publicKey(): string; sign(message: string): void; openBrowser(url: string): void; xResult(id: string, result: string): void } | undefined;
-const nativeKey = NATIVE?.publicKey() ? new PublicKey(fromBase64(NATIVE.publicKey())).toBase58() : "";
+const NATIVE = (window as any).ThumbprintKey as { publicKey(): string; enroll(challenge: string): void; sign(message: string): void; openBrowser(url: string): void; xResult(id: string, result: string): void } | undefined;
+let nativeKey = NATIVE?.publicKey() || "";
 // In Chrome: the app's key, which this page is here to link with the wallet.
-const linkingFor = query.get("approver") || "";
+const linkingFor = query.get("setup") || query.get("enrollment") || "";
 const appLink = (parameters: string) => `intent://phone?${parameters}#Intent;scheme=thumbprint;package=org.pyras.thumbprint;end`;
 
 let fingerprintDone: ((result: { signature: string; error: string }) => void) | null = null;
-(window as any).thumbprintSigned = (signature: string, error: string) => fingerprintDone?.({ signature, error });
+(window as any).thumbprintSigned = (signature: string, error: string) => {
+  const done = fingerprintDone;
+  fingerprintDone = null;
+  done?.({ signature, error });
+};
 const fingerprint = (message?: string) =>
   new Promise<Signed>((resolve, reject) => {
+    if (fingerprintDone) return reject(new Error("Finish or cancel the current approval first."));
     fingerprintDone = (result) => (result.error ? reject(new Error(result.error)) : resolve({ owner: state.device!.owner, signature: fromBase64(result.signature) }));
     NATIVE!.sign(message!);
   });
@@ -110,9 +115,15 @@ async function signAndSubmit(action: object, message: string) {
   return api("/v1/act", { ...action, owner: signed.owner, message, signature: base64(signed.signature) });
 }
 
+async function approvePost(text: string) {
+  await refreshDevice(); // the signed message carries the current counter, which makes it single use
+  await signAndSubmit({ kind: "attest" }, attestMessage(state.device!.handle!, text, state.device!.flagCount));
+}
+
 // ---- Actions ----
 
 async function run(label: string, action: () => Promise<void>) {
+  if (state.busy) return;
   state.busy = label;
   state.error = "";
   render();
@@ -135,24 +146,49 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
       const handle = proof
         ? (await api(`/v1/proof?owner=${state.device!.owner}&link=${encodeURIComponent(proof)}`)).handle
         : "x:" + fields.get("handle")!.toString().trim().replace(/^@/, "").toLowerCase();
-      const approver = linkingFor || state.device!.owner; // the test signer approves with its own key
+      const approver = state.device!.owner; // the test signer approves with its own key
       await signAndSubmit({ kind: "bind", handle, proof, approver }, bindMessage(handle, approver));
       await refreshDevice();
     });
   },
-  // A reinstalled app or a changed fingerprint means a new key. The wallet moves approval to it.
-  moveKey: () =>
-    run("Opening wallet", async () => {
-      await refreshDevice();
-      const device = state.device!;
-      await signAndSubmit({ kind: "approver", approver: linkingFor }, approverMessage(device.handle!, linkingFor, device.flagCount));
-      await refreshDevice();
-    }),
-  openLink: () => NATIVE!.openBrowser(`${location.origin}/phone?approver=${nativeKey}&session=${encodeURIComponent(session)}`),
+  prepareHardware: () => run("Verifying this phone", async () => {
+    const pending = await api("/v1/enrollment/challenge", { owner: state.device!.owner });
+    const attested = await new Promise<any>((resolve, reject) => {
+      (window as any).thumbprintEnrolled = (output: string, error: string) => error ? reject(new Error(error)) : resolve(JSON.parse(output));
+      NATIVE!.enroll(pending.challenge);
+    });
+    nativeKey = attested.key;
+    const proof = await fingerprint(`Thumbprint enrollment proof\nChallenge: ${pending.challenge}\nKey: ${nativeKey}`);
+    const checked = await api("/v1/enrollment/verify", { id: pending.id, certificates: attested.certificates, signature: base64(proof.signature) });
+    NATIVE!.openBrowser(`${location.origin}/phone?enrollment=${encodeURIComponent(checked.ticket)}&owner=${encodeURIComponent(state.device!.owner)}&session=${encodeURIComponent(session)}`);
+  }),
+  completeHardware: () => run("Confirming verified key", async () => {
+    const ticket = query.get("enrollment")!;
+    const enrollment = await api(`/v1/enrollment/ticket?id=${encodeURIComponent(ticket)}`);
+    await refreshDevice(enrollment.owner);
+    await signAndSubmit({ kind: "hardware", ticket }, enrollment.message);
+    (state as any).enrolled = true;
+    await refreshDevice();
+  }),
+  openLink: () => NATIVE!.openBrowser(`${location.origin}/phone?setup=1&session=${encodeURIComponent(session)}`),
+  destination: (form) => run("Approving treasury destination", async () => {
+    await refreshDevice();
+    const recipient = new PublicKey(new FormData(form!).get("recipient")!.toString().trim()).toBase58();
+    const expiresAt = Math.floor(Date.now() / 1000) + 86400;
+    await signAndSubmit({ kind: "destination", recipient, expiresAt, enabled: true }, destinationMessage(state.device!.handle!, recipient, expiresAt, true, state.device!.flagCount));
+    await refreshDevice();
+  }),
+  revokeDestination: () => run("Revoking treasury destination", async () => {
+    await refreshDevice();
+    const d = state.device!;
+    const recipient = d.destination!.recipient!, expiresAt = d.destination!.expiresAt!;
+    await signAndSubmit({ kind: "destination", recipient, expiresAt, enabled: false }, destinationMessage(d.handle!, recipient, expiresAt, false, d.flagCount));
+    await refreshDevice();
+  }),
   approve: () =>
     run("Waiting for your fingerprint", async () => {
       const request = state.request!;
-      await signAndSubmit({ kind: "attest" }, attestMessage(state.device!.handle!, request.text));
+      await approvePost(request.text);
       state.lastSigned = request.text;
       state.request = null;
       setTimeout(() => ((state.lastSigned = ""), render()), 4000);
@@ -161,7 +197,7 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
   compose: (form) => {
     const draft = new FormData(form!).get("text")!.toString().trim();
     run("Waiting for your fingerprint", async () => {
-      await signAndSubmit({ kind: "attest" }, attestMessage(state.device!.handle!, (globalThis as any).normalizeText(draft)));
+      await approvePost((globalThis as any).normalizeText(draft));
       location.href = `https://x.com/intent/post?text=${encodeURIComponent(draft)}`;
     });
   },
@@ -205,7 +241,7 @@ function setCompromised(compromised: boolean) {
   let result: object = { ok: true };
   try {
     if (!state.device?.handle || state.device.approver !== nativeKey) throw new Error("Link this Seeker first, in the Thumbprint tab");
-    await signAndSubmit({ kind: "attest" }, attestMessage(state.device.handle, text));
+    await approvePost(text);
   } catch (error: any) {
     result = { ok: false, reason: error?.message || String(error) };
   }
@@ -243,13 +279,14 @@ const GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 
 function body(): string {
   const device = state.device;
-  if (NATIVE && !nativeKey)
-    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Add a fingerprint first</h1>
-      <p>Thumbprint approves posts with your fingerprint. Add one in this phone's settings, then open the app again.</p></section>`;
-  if (NATIVE && (!device?.handle || device.approver !== nativeKey))
-    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Thumbprint</h1>
-      <p>Link this Seeker once with your wallet. After that, every post is approved by your fingerprint and nothing else.</p></section>
-      <button class="primary" data-action="openLink">Link this Seeker</button>`;
+  if (NATIVE && !device?.handle)
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Protect your account</h1>
+      <p>First connect your Seeker wallet and prove control of your X account. Then verify this phone's biometric key.</p></section>
+      <button class="primary" data-action="openLink">Connect and link account</button>`;
+  if (NATIVE && (!nativeKey || device?.approver !== nativeKey))
+    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Verify this phone</h1>
+      <p>Create a hardware-protected key, prove it requires a biometric for each approval, then confirm it with your wallet. Existing payment approvals are invalidated when you replace a key.</p></section>
+      <button class="primary" data-action="prepareHardware">Verify biometric hardware</button>`;
   if (!NATIVE && !SOFTWARE && !linkingFor)
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Open the Thumbprint app</h1>
       <p>Posts are approved in the app, with your fingerprint.</p></section>
@@ -299,13 +336,15 @@ function body(): string {
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div></dl>`;
 
   const name = "@" + device.handle.slice(2);
-  if (linkingFor && device.approver !== linkingFor)
-    return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>This Seeker protects ${escapeHtml(name)}</h1>
-      <p>The app on this phone has a new fingerprint key. Confirm with your wallet to approve posts with it.</p></section>
-      <button class="primary" data-action="moveKey">Use this phone's fingerprint</button>`;
+  if (query.get("enrollment") && !device.approver)
+    return `<section class="hero"><h1>Confirm verified biometric key</h1><p>The server checked this key's hardware attestation. Your wallet now authorizes it to protect this account.</p></section>
+      <button class="primary" data-action="completeHardware">Confirm with Seeker wallet</button>`;
+  if (query.get("enrollment") && !(state as any).enrolled)
+    return `<section class="hero"><h1>Confirm biometric key</h1><p>Use the wallet to confirm this phone's verified key. Replacing a key invalidates existing payment approvals.</p></section>
+      <button class="primary" data-action="completeHardware">Confirm with Seeker wallet</button>`;
   if (linkingFor)
     return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>${escapeHtml(name)} is linked</h1>
-      <p>From here on, posts are approved in the app with your fingerprint.</p></section>
+      <p>Continue in the app to approve posts and payment destinations.</p></section>
       <a class="button primary" href="${appLink(`owner=${device.owner}&session=${encodeURIComponent(session)}`)}">Back to Thumbprint</a>`;
   if (state.request) {
     const mismatch = state.request.handle !== device.handle;
@@ -333,14 +372,31 @@ function body(): string {
       <button class="primary">Approve and post</button></form>` : ""}
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div>
       <div><dt>Computer</dt><dd>${state.online ? "Paired" : "Not connected"}</dd></div></dl>
-      <button class="quiet danger" data-action="askKill">My account was hacked</button>`;
+      ${NATIVE ? `<section class="payment-panel"><p class="eyebrow">Protected treasury payments · devnet</p>
+      <p>${device.destination?.recipient ? `Current destination: <code>${escapeHtml(device.destination.recipient)}</code> · ${escapeHtml(device.destination.state)}` : "No payment destination approved yet."}</p>
+      <form data-action="destination"><label for="recipient">Treasury SOL address</label><input id="recipient" name="recipient" required placeholder="Full Solana recipient address" autocomplete="off" spellcheck="false">
+      <p class="hint">Approval lasts 24 hours. Read the full address on the next screen.</p><button class="primary">Approve destination</button></form>
+      ${device.destination?.recipient ? `<a class="button quiet" href="/pay?handle=${encodeURIComponent(device.handle)}" target="_blank" rel="noopener">Open protected payment page</a><button class="quiet danger" data-action="revokeDestination">Revoke destination</button>` : ""}</section>` : ""}
+      <button class="quiet danger" data-action="askKill">Suspend account and payments</button>`;
 }
 
 function render() {
   const main = document.querySelector("main")!;
-  main.innerHTML = state.busy
-    ? `<section class="hero"><div class="glyph pulse">${GLYPH}</div><h1>${state.busy}</h1><p>${SOFTWARE ? "Signing with the test key." : NATIVE ? "Touch the fingerprint sensor." : "Confirm in your wallet."}</p></section>`
-    : body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "") + (SOFTWARE ? `<p class="badge">Test signer. No Seeker, no fingerprint.</p>` : "");
+  if (state.busy) {
+    main.setAttribute("aria-busy", "true");
+    main.querySelectorAll("button").forEach(button => button.disabled = true);
+    let status = document.getElementById("busy-status");
+    if (!status) { status = document.createElement("div"); status.id = "busy-status"; status.className = "busy-status"; status.setAttribute("role", "status"); document.body.append(status); }
+    status.textContent = state.busy;
+    return;
+  }
+  document.getElementById("busy-status")?.remove();
+  main.removeAttribute("aria-busy");
+  const values = new Map(Array.from(main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name]")).map(input => [input.name, input.value]));
+  const scroll = window.scrollY;
+  main.innerHTML = body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "") + (SOFTWARE ? `<p class="badge">Test signer. No Seeker, no fingerprint.</p>` : "");
+  main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name]").forEach(input => { if (values.has(input.name)) input.value = values.get(input.name)!; });
+  window.scrollTo(0, scroll);
 }
 
 document.addEventListener("click", (event) => {

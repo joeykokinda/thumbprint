@@ -11,16 +11,35 @@ window.thumbprintReply = (id, result) => {
     resolve?.(null);
   }
 };
+function sendToHost(type, body) {
+  return new Promise(resolve => {
+    const id = String(++lastRequest);
+    waiting.set(id, resolve);
+    setTimeout(() => window.thumbprintReply(id, type === "approve" ? '{"ok":false,"reason":"Not approved in time"}' : "null"), 120000);
+    ThumbprintHost.send(id, type, body);
+  });
+}
+const verified = new Map();
 const chrome = {
   runtime: {
-    sendMessage: (message) =>
-      new Promise((resolve) => {
-        if (message.type !== "lookup" && message.type !== "approve") return resolve(null);
-        const id = String(++lastRequest);
-        waiting.set(id, resolve);
-        // An approval waits on a person; if the phone page never answers, stop the spinner.
-        setTimeout(() => window.thumbprintReply(id, message.type === "approve" ? '{"ok":false,"reason":"Not approved in time"}' : "null"), 120_000);
-        ThumbprintHost.send(id, message.type, message.type === "lookup" ? JSON.stringify(message.items) : message.text);
-      }),
+    sendMessage: async message => {
+      if (message.type !== "lookup" && message.type !== "approve") return null;
+      const result = await sendToHost(message.type, message.type === "lookup" ? JSON.stringify(message.items) : message.text);
+      if (message.type !== "lookup" || !Array.isArray(result)) return result;
+      return Promise.all(result.map(async (entry, index) => {
+        if (entry.state !== "certified") return entry;
+        const item = message.items[index];
+        const cacheKey = `${entry.signature}|${item.handle}|${item.hash}|${item.postedAt}`;
+        try {
+          const proof = verified.get(cacheKey) || await verifyThumbprintPost(entry.signature, item.handle, { hash: item.hash, postedAt: item.postedAt ?? null }, async signature => {
+            const response = await sendToHost("proof", signature);
+            return response?.result;
+          });
+          if (verified.size > 500) verified.clear();
+          verified.set(cacheKey, proof);
+          return { ...entry, timestamp: proof.timestamp, sgtMint: proof.sgtMint };
+        } catch { return { state: "none", verificationUnavailable: true }; }
+      }));
+    },
   },
 };

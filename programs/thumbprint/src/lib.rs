@@ -3,7 +3,9 @@ use anchor_lang::solana_program::{
     ed25519_program,
     hash::hash,
     program_option::COption,
-    sysvar::instructions::{load_current_index_checked, load_instruction_at_checked, ID as INSTRUCTIONS_ID},
+    sysvar::instructions::{
+        load_current_index_checked, load_instruction_at_checked, ID as INSTRUCTIONS_ID,
+    },
 };
 use anchor_spl::token_2022::spl_token_2022::{
     self,
@@ -27,27 +29,62 @@ pub const VERIFIER: Pubkey = pubkey!("5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm
 pub const VERIFIER: Pubkey = pubkey!("4VrKHHLAsJTtjDaKGNHbNfBNoTt5Q5jezwNZv8Vme8Z8"); // tests/fixtures/verifier.json
 
 pub const MAX_HANDLE_LEN: usize = 32;
+pub const P256_PROGRAM: Pubkey = pubkey!("Secp256r1SigVerify1111111111111111111111111");
+pub const MAX_AUTHORIZATION_SECONDS: i64 = 7 * 86400;
+
+pub fn domain() -> String {
+    let network = if cfg!(feature = "devnet") {
+        "devnet"
+    } else {
+        "localnet"
+    };
+    format!("Thumbprint v2 | {network} | {}", crate::ID)
+}
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+pub fn hardware_message(handle: &str, key: &[u8; 33], evidence: &[u8; 32], count: u64) -> String {
+    format!(
+        "{}\nEnroll biometric key for {handle}\nKey: {}\nEvidence: {}\nCounter: {count}",
+        domain(),
+        hex(key),
+        hex(evidence)
+    )
+}
+pub fn destination_message(
+    handle: &str,
+    address: &Pubkey,
+    expires: i64,
+    enabled: bool,
+    count: u64,
+) -> String {
+    let action = if enabled { "Approve" } else { "Revoke" };
+    format!("{}\n{action} treasury payments for {handle}\nRecipient: {address}\nExpires: {expires}\nCounter: {count}", domain())
+}
 
 #[program]
 pub mod thumbprint {
     use super::*;
 
     // The Seed Vault wallet only signs transactions for the network it is set to, and the
-    // Genesis Token lives on mainnet. So the device signs a readable message instead, and every
-    // instruction here checks that signature through the Ed25519 program in the same transaction.
-    // Anyone may pay for and submit the transaction; only the device can produce the message.
+    // Genesis Token lives on mainnet. So every action is a readable signed message, verified by
+    // a signature-check instruction placed directly before ours in the same transaction:
+    // the wallet (Ed25519) for linking and key enrollment, the attested fingerprint key (P-256)
+    // for everything else. Anyone may pay for and submit the transaction.
 
     /// One device, one handle. `handle` is "platform:name", lowercase, e.g. "x:someone".
     // ponytail: one trusted verifier key vouches for control of the social account.
     // Upgrade path: several independent verifiers, or a zkTLS proof of the post checked here.
     ///
-    /// `approver` is the key that will approve posts from now on. In the Thumbprint app it lives
-    /// in the phone's secure hardware and can only be used with a fingerprint, so the wallet
-    /// (which may accept a PIN) is needed just once, here, to prove this is a real Seeker.
+    /// `approver` is kept for the wallet message and account layout only. Nothing can be
+    /// approved until `enroll_hardware` registers an attested fingerprint key.
     pub fn bind(ctx: Context<Bind>, handle: String, approver: Pubkey) -> Result<()> {
         require!(is_valid_handle(&handle), ThumbprintError::InvalidHandle);
         let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
-        require!(message == bind_message(&handle, &approver).as_bytes(), ThumbprintError::WrongMessage);
+        require!(
+            message == bind_message(&handle, &approver).as_bytes(),
+            ThumbprintError::WrongMessage
+        );
         verify_sgt(
             ctx.accounts.owner.key,
             &ctx.accounts.sgt_token_account,
@@ -65,11 +102,14 @@ pub mod thumbprint {
         Ok(())
     }
 
-    /// Records that the device bound to a handle approved one exact post. The device signs the
-    /// post text itself, and the hash recorded here is computed from that signed text.
+    /// Records that the enrolled fingerprint key approved one exact post. The key signs the post
+    /// text itself and the hash recorded here is computed from that signed text. The counter
+    /// makes each signature single use, so a captured approval cannot be submitted again later
+    /// to make an old approval look fresh.
     pub fn attest(ctx: Context<Act>) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
-        let prefix = attest_prefix(&ctx.accounts.device.handle);
+        let message = hardware_signature(&ctx.accounts.instructions, &ctx.accounts.hardware.key)?;
+        let device = &mut ctx.accounts.device;
+        let prefix = attest_prefix(&device.handle, device.flag_count);
         let text = message
             .strip_prefix(prefix.as_bytes())
             .ok_or(ThumbprintError::WrongMessage)?;
@@ -78,8 +118,12 @@ pub mod thumbprint {
             &ctx.accounts.sgt_token_account,
             &ctx.accounts.sgt_mint,
         )?;
+        device.flag_count = device
+            .flag_count
+            .checked_add(1)
+            .ok_or(ThumbprintError::CounterOverflow)?;
         emit!(Attested {
-            handle: ctx.accounts.device.handle.clone(),
+            handle: device.handle.clone(),
             text_hash: hash(text).to_bytes(),
             owner: ctx.accounts.owner.key(),
             sgt_mint: ctx.accounts.sgt_mint.key(),
@@ -88,57 +132,11 @@ pub mod thumbprint {
         Ok(())
     }
 
-    /// The same approval as `attest`, for a post that names a Solana address (a token mint, a
-    /// contract, a treasury). It also creates a small account at a known address, so a wallet
-    /// or another program can check "did this handle's phone approve this address?" by looking
-    /// for that account, without asking any server.
-    // ponytail: one address per post, matched as plain text inside the signed post.
-    // Upgrade path: remaining accounts for several addresses, word-boundary matching.
-    pub fn endorse(ctx: Context<Endorse>, address: Pubkey) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
-        let prefix = attest_prefix(&ctx.accounts.device.handle);
-        let text = message
-            .strip_prefix(prefix.as_bytes())
-            .ok_or(ThumbprintError::WrongMessage)?;
-        let written = address.to_string();
-        require!(
-            text.windows(written.len()).any(|window| window == written.as_bytes()),
-            ThumbprintError::AddressNotInPost
-        );
-        verify_sgt(
-            ctx.accounts.owner.key,
-            &ctx.accounts.sgt_token_account,
-            &ctx.accounts.sgt_mint,
-        )?;
-        let handle = ctx.accounts.device.handle.clone();
-        let text_hash = hash(text).to_bytes();
-        let timestamp = Clock::get()?.unix_timestamp;
-        let endorsement = &mut ctx.accounts.endorsement;
-        endorsement.handle = handle.clone();
-        endorsement.address = address;
-        endorsement.text_hash = text_hash;
-        endorsement.timestamp = timestamp;
-        emit!(Attested {
-            handle: handle.clone(),
-            text_hash,
-            owner: ctx.accounts.owner.key(),
-            sgt_mint: ctx.accounts.sgt_mint.key(),
-            timestamp,
-        });
-        emit!(Endorsed {
-            handle,
-            address,
-            owner: ctx.accounts.owner.key(),
-            sgt_mint: ctx.accounts.sgt_mint.key(),
-        });
-        Ok(())
-    }
-
     /// Kill switch: the device owner marks the handle as compromised (or clears it).
     /// Works while an attacker holds the social account, because it needs only the device.
     /// The counter in the message stops an old "recovered" signature from being replayed.
     pub fn set_compromised(ctx: Context<Flag>, compromised: bool) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, &ctx.accounts.device.approver)?;
+        let message = hardware_signature(&ctx.accounts.instructions, &ctx.accounts.hardware.key)?;
         let device = &mut ctx.accounts.device;
         require!(
             message == flag_message(&device.handle, compromised, device.flag_count).as_bytes(),
@@ -149,7 +147,10 @@ pub mod thumbprint {
             &ctx.accounts.sgt_token_account,
             &ctx.accounts.sgt_mint,
         )?;
-        device.flag_count += 1;
+        device.flag_count = device
+            .flag_count
+            .checked_add(1)
+            .ok_or(ThumbprintError::CounterOverflow)?;
         ctx.accounts.status.compromised = compromised;
         emit!(Flagged {
             handle: device.handle.clone(),
@@ -160,27 +161,22 @@ pub mod thumbprint {
         Ok(())
     }
 
-    /// For anyone else's transaction: fails unless the handle's phone approved this address and
-    /// the owner has not reported the account as taken over. Put it in front of a swap, a claim
-    /// or a mint and the whole transaction reverts when the answer is no. Programs can instead
-    /// take the same two accounts in their own constraints.
-    pub fn check(ctx: Context<Check>, _handle: String, _address: Pubkey) -> Result<()> {
-        let ours = |account: &UncheckedAccount| *account.owner == crate::ID && !account.data_is_empty();
-        require!(ours(&ctx.accounts.endorsement), ThumbprintError::NeverApproved);
-        if ours(&ctx.accounts.status) {
-            let status = Status::try_deserialize(&mut &ctx.accounts.status.try_borrow_data()?[..])?;
-            require!(!status.compromised, ThumbprintError::ReportedCompromised);
-        }
-        Ok(())
-    }
-
-    /// Moves approval to a new key, signed by the wallet that linked the device. Needed when the
-    /// fingerprint key is lost: Android destroys it if the enrolled fingerprints change.
-    pub fn set_approver(ctx: Context<Act>, approver: Pubkey) -> Result<()> {
-        let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
-        let device = &mut ctx.accounts.device;
+    /// The verifier validates Android attestation and possession off-device before co-signing.
+    /// The owner also signs the exact key and evidence digest, preventing relay substitution.
+    pub fn enroll_hardware(
+        ctx: Context<EnrollHardware>,
+        key: [u8; 33],
+        evidence: [u8; 32],
+    ) -> Result<()> {
         require!(
-            message == approver_message(&device.handle, &approver, device.flag_count).as_bytes(),
+            key[0] == 2 || key[0] == 3,
+            ThumbprintError::HardwareRequired
+        );
+        let device = &mut ctx.accounts.device;
+        let message = signed_message(&ctx.accounts.instructions, ctx.accounts.owner.key)?;
+        require!(
+            message
+                == hardware_message(&device.handle, &key, &evidence, device.flag_count).as_bytes(),
             ThumbprintError::WrongMessage
         );
         verify_sgt(
@@ -188,8 +184,127 @@ pub mod thumbprint {
             &ctx.accounts.sgt_token_account,
             &ctx.accounts.sgt_mint,
         )?;
-        device.approver = approver;
-        device.flag_count += 1;
+        device.flag_count = device
+            .flag_count
+            .checked_add(1)
+            .ok_or(ThumbprintError::CounterOverflow)?;
+        let hardware = &mut ctx.accounts.hardware;
+        hardware.key = key;
+        hardware.evidence = evidence;
+        hardware.generation = device.flag_count;
+        emit!(HardwareEnrolled {
+            handle: device.handle.clone(),
+            key,
+            evidence,
+            generation: hardware.generation
+        });
+        Ok(())
+    }
+
+    pub fn set_destination(
+        ctx: Context<SetDestination>,
+        recipient: Pubkey,
+        expires_at: i64,
+        enabled: bool,
+    ) -> Result<()> {
+        let device = &mut ctx.accounts.device;
+        let message = hardware_signature(&ctx.accounts.instructions, &ctx.accounts.hardware.key)?;
+        require!(
+            message
+                == destination_message(
+                    &device.handle,
+                    &recipient,
+                    expires_at,
+                    enabled,
+                    device.flag_count
+                )
+                .as_bytes(),
+            ThumbprintError::WrongMessage
+        );
+        verify_sgt(
+            ctx.accounts.owner.key,
+            &ctx.accounts.sgt_token_account,
+            &ctx.accounts.sgt_mint,
+        )?;
+        let now = Clock::get()?.unix_timestamp;
+        if enabled {
+            require!(
+                recipient != Pubkey::default()
+                    && expires_at > now
+                    && expires_at <= now + MAX_AUTHORIZATION_SECONDS,
+                ThumbprintError::InvalidExpiry
+            );
+        } else {
+            require_keys_eq!(
+                recipient,
+                ctx.accounts.authorization.recipient,
+                ThumbprintError::WrongRecipient
+            );
+        }
+        let authorization = &mut ctx.accounts.authorization;
+        authorization.recipient = recipient;
+        authorization.expires_at = expires_at;
+        authorization.enabled = enabled;
+        authorization.generation = ctx.accounts.hardware.generation;
+        authorization.approved_at = now;
+        authorization.handle = device.handle.clone();
+        device.flag_count = device
+            .flag_count
+            .checked_add(1)
+            .ok_or(ThumbprintError::CounterOverflow)?;
+        emit!(DestinationSet {
+            handle: device.handle.clone(),
+            recipient,
+            expires_at,
+            enabled,
+            generation: authorization.generation
+        });
+        Ok(())
+    }
+
+    /// Validation and the actual transfer share the same recipient account and instruction.
+    pub fn pay(ctx: Context<Pay>, _handle: String, lamports: u64) -> Result<()> {
+        let authorization = &ctx.accounts.authorization;
+        require!(authorization.enabled, ThumbprintError::Revoked);
+        require!(
+            authorization.expires_at > Clock::get()?.unix_timestamp,
+            ThumbprintError::Expired
+        );
+        require!(
+            authorization.generation == ctx.accounts.hardware.generation,
+            ThumbprintError::KeyChanged
+        );
+        require_keys_eq!(
+            authorization.recipient,
+            ctx.accounts.recipient.key(),
+            ThumbprintError::WrongRecipient
+        );
+        if !ctx.accounts.status.data_is_empty() {
+            require_keys_eq!(
+                *ctx.accounts.status.owner,
+                crate::ID,
+                ThumbprintError::ReportedCompromised
+            );
+            let status = Status::try_deserialize(&mut &ctx.accounts.status.try_borrow_data()?[..])?;
+            require!(!status.compromised, ThumbprintError::ReportedCompromised);
+        }
+        require!(lamports > 0, ThumbprintError::InvalidAmount);
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.payer.to_account_info(),
+                    to: ctx.accounts.recipient.to_account_info(),
+                },
+            ),
+            lamports,
+        )?;
+        emit!(Paid {
+            handle: authorization.handle.clone(),
+            recipient: authorization.recipient,
+            payer: ctx.accounts.payer.key(),
+            lamports
+        });
         Ok(())
     }
 }
@@ -199,24 +314,29 @@ pub mod thumbprint {
 pub fn bind_message(handle: &str, approver: &Pubkey) -> String {
     format!("Thumbprint: link {handle} to this Seeker\nPosts are approved by key {approver}")
 }
-pub fn approver_message(handle: &str, approver: &Pubkey, count: u64) -> String {
-    format!("Thumbprint: {handle} posts are now approved by key {approver} (#{count})")
-}
-pub fn attest_prefix(handle: &str) -> String {
-    format!("Thumbprint: approve this post as {handle}\n\n")
+pub fn attest_prefix(handle: &str, count: u64) -> String {
+    format!("{}\nApprove post as {handle} (#{count})\n\n", domain())
 }
 pub fn flag_message(handle: &str, compromised: bool, count: u64) -> String {
-    let state = if compromised { "compromised" } else { "recovered" };
-    format!("Thumbprint: report {handle} as {state} (#{count})")
+    let state = if compromised {
+        "compromised"
+    } else {
+        "recovered"
+    };
+    format!("{}\nReport {handle} as {state} (#{count})", domain())
 }
 
-/// Returns the message that `owner` signed, taken from the Ed25519 program instruction placed
+/// Returns the message the wallet `owner` signed, taken from the Ed25519 program instruction placed
 /// directly before this one. That program has already verified the signature by the time we run.
 fn signed_message(instructions: &AccountInfo, owner: &Pubkey) -> Result<Vec<u8>> {
     let index = load_current_index_checked(instructions)? as usize;
     require!(index > 0, ThumbprintError::NotSigned);
     let instruction = load_instruction_at_checked(index - 1, instructions)?;
-    require_keys_eq!(instruction.program_id, ed25519_program::ID, ThumbprintError::NotSigned);
+    require_keys_eq!(
+        instruction.program_id,
+        ed25519_program::ID,
+        ThumbprintError::NotSigned
+    );
     let data = &instruction.data;
     // Layout: count u8, padding u8, then u16 fields: signature offset, signature instruction,
     // key offset, key instruction, message offset, message size, message instruction.
@@ -225,7 +345,8 @@ fn signed_message(instructions: &AccountInfo, owner: &Pubkey) -> Result<Vec<u8>>
     };
     let parsed = (|| {
         let inline = u16::MAX as usize; // every part must live in this same instruction
-        if *data.first()? != 1 || field(4)? != inline || field(8)? != inline || field(14)? != inline {
+        if *data.first()? != 1 || field(4)? != inline || field(8)? != inline || field(14)? != inline
+        {
             return None;
         }
         let key_offset = field(6)?;
@@ -237,15 +358,40 @@ fn signed_message(instructions: &AccountInfo, owner: &Pubkey) -> Result<Vec<u8>>
     parsed.ok_or_else(|| error!(ThumbprintError::NotSigned))
 }
 
+/// The same for the fingerprint key: the message `key` signed, from the P-256 precompile
+/// instruction placed directly before this one.
+fn hardware_signature(instructions: &AccountInfo, key: &[u8; 33]) -> Result<Vec<u8>> {
+    let index = load_current_index_checked(instructions)? as usize;
+    require!(index > 0, ThumbprintError::NotSigned);
+    let ix = load_instruction_at_checked(index - 1, instructions)?;
+    require_keys_eq!(ix.program_id, P256_PROGRAM, ThumbprintError::NotSigned);
+    let data = ix.data;
+    let field = |at: usize| -> Option<usize> {
+        Some(u16::from_le_bytes([*data.get(at)?, *data.get(at + 1)?]) as usize)
+    };
+    let parsed = (|| {
+        if *data.first()? != 1 || field(4)? != 65535 || field(8)? != 65535 || field(14)? != 65535 {
+            return None;
+        }
+        let key_offset = field(6)?;
+        let offset = field(10)?;
+        if data.get(key_offset..key_offset + 33)? != key {
+            return None;
+        }
+        Some(data.get(offset..offset + field(12)?)?.to_vec())
+    })();
+    parsed.ok_or_else(|| error!(ThumbprintError::NotSigned))
+}
+
 pub fn is_valid_handle(handle: &str) -> bool {
     let Some((platform, name)) = handle.split_once(':') else {
         return false;
     };
     let allowed = |text: &str| {
         !text.is_empty()
-            && text
-                .bytes()
-                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_' || byte == b'.')
+            && text.bytes().all(|byte| {
+                byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_' || byte == b'.'
+            })
     };
     handle.len() <= MAX_HANDLE_LEN && allowed(platform) && allowed(name)
 }
@@ -260,7 +406,11 @@ fn verify_sgt(owner: &Pubkey, token_account: &AccountInfo, mint: &AccountInfo) -
     if cfg!(feature = "devnet") {
         return Ok(());
     }
-    require_keys_eq!(*token_account.owner, spl_token_2022::ID, ThumbprintError::NotSeeker);
+    require_keys_eq!(
+        *token_account.owner,
+        spl_token_2022::ID,
+        ThumbprintError::NotSeeker
+    );
     require_keys_eq!(*mint.owner, spl_token_2022::ID, ThumbprintError::NotSeeker);
 
     let token_data = token_account.try_borrow_data()?;
@@ -325,7 +475,7 @@ pub struct Bind<'info> {
 
 #[derive(Accounts)]
 pub struct Act<'info> {
-    /// CHECK: proven by the Ed25519 instruction, see signed_message
+    /// CHECK: tied to the device by has_one; the action itself is signed by the hardware key
     pub owner: UncheckedAccount<'info>,
     /// CHECK: validated in verify_sgt
     pub sgt_token_account: UncheckedAccount<'info>,
@@ -333,43 +483,18 @@ pub struct Act<'info> {
     pub sgt_mint: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
     pub device: Account<'info, Device>,
+    #[account(seeds = [b"hardware", device.key().as_ref()], bump)]
+    pub hardware: Account<'info, Hardware>,
     /// CHECK: the instructions sysvar
     #[account(address = INSTRUCTIONS_ID)]
     pub instructions: UncheckedAccount<'info>,
-}
-
-#[derive(Accounts)]
-#[instruction(address: Pubkey)]
-pub struct Endorse<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    /// CHECK: proven by the Ed25519 instruction, see signed_message
-    pub owner: UncheckedAccount<'info>,
-    /// CHECK: validated in verify_sgt
-    pub sgt_token_account: UncheckedAccount<'info>,
-    /// CHECK: validated in verify_sgt
-    pub sgt_mint: UncheckedAccount<'info>,
-    #[account(seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
-    pub device: Account<'info, Device>,
-    #[account(
-        init,
-        payer = payer,
-        space = 8 + Endorsement::INIT_SPACE,
-        seeds = [b"address", device.handle.as_bytes(), address.as_ref()],
-        bump
-    )]
-    pub endorsement: Account<'info, Endorsement>,
-    /// CHECK: the instructions sysvar
-    #[account(address = INSTRUCTIONS_ID)]
-    pub instructions: UncheckedAccount<'info>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct Flag<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// CHECK: proven by the Ed25519 instruction, see signed_message
+    /// CHECK: tied to the device by has_one; the action itself is signed by the hardware key
     pub owner: UncheckedAccount<'info>,
     /// CHECK: validated in verify_sgt
     pub sgt_token_account: UncheckedAccount<'info>,
@@ -377,6 +502,8 @@ pub struct Flag<'info> {
     pub sgt_mint: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
     pub device: Account<'info, Device>,
+    #[account(seeds = [b"hardware", device.key().as_ref()], bump)]
+    pub hardware: Account<'info, Hardware>,
     #[account(
         init_if_needed,
         payer = payer,
@@ -392,27 +519,110 @@ pub struct Flag<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(handle: String, address: Pubkey)]
-pub struct Check<'info> {
-    /// CHECK: existence is the answer; read in check
-    #[account(seeds = [b"address", handle.as_bytes(), address.as_ref()], bump)]
-    pub endorsement: UncheckedAccount<'info>,
-    /// CHECK: absent until the first report; read in check
-    #[account(seeds = [b"status", handle.as_bytes()], bump)]
-    pub status: UncheckedAccount<'info>,
+pub struct EnrollHardware<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(address = VERIFIER @ ThumbprintError::NotVerified)]
+    pub verifier: Signer<'info>,
+    /// CHECK: authenticated by wallet message signature
+    pub owner: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_token_account: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_mint: UncheckedAccount<'info>,
+    #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
+    pub device: Account<'info, Device>,
+    #[account(init_if_needed, payer = payer, space = 8 + Hardware::INIT_SPACE, seeds = [b"hardware", device.key().as_ref()], bump)]
+    pub hardware: Account<'info, Hardware>,
+    /// CHECK: instructions sysvar
+    #[account(address = INSTRUCTIONS_ID)]
+    pub instructions: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
-/// Exists only if the handle's phone approved a post naming this address.
-/// Address: seeds ["address", handle, address] under this program. `address` comes first so
-/// "who approved this address?" is one fixed-offset filter over the program's accounts.
+#[derive(Accounts)]
+pub struct SetDestination<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: device.has_one binds this owner; attested key signs the message
+    pub owner: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_token_account: UncheckedAccount<'info>,
+    /// CHECK: validated in verify_sgt
+    pub sgt_mint: UncheckedAccount<'info>,
+    #[account(mut, seeds = [b"device", sgt_mint.key().as_ref()], bump, has_one = owner @ ThumbprintError::NotOwner)]
+    pub device: Account<'info, Device>,
+    #[account(seeds = [b"hardware", device.key().as_ref()], bump)]
+    pub hardware: Account<'info, Hardware>,
+    #[account(init_if_needed, payer = payer, space = 8 + Authorization::INIT_SPACE, seeds = [b"treasury", device.handle.as_bytes()], bump)]
+    pub authorization: Account<'info, Authorization>,
+    /// CHECK: instructions sysvar
+    #[account(address = INSTRUCTIONS_ID)]
+    pub instructions: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(handle: String)]
+pub struct Pay<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: recipient is matched to the authorization before transfer
+    #[account(mut)]
+    pub recipient: UncheckedAccount<'info>,
+    #[account(seeds = [b"handle", handle.as_bytes()], bump)]
+    pub handle_claim: Account<'info, HandleClaim>,
+    #[account(seeds = [b"device", handle_claim.sgt_mint.as_ref()], bump)]
+    pub device: Account<'info, Device>,
+    #[account(seeds = [b"hardware", device.key().as_ref()], bump)]
+    pub hardware: Account<'info, Hardware>,
+    #[account(seeds = [b"treasury", handle.as_bytes()], bump, constraint = authorization.handle == handle @ ThumbprintError::WrongMessage)]
+    pub authorization: Account<'info, Authorization>,
+    /// CHECK: optional account until the first report; owner and discriminator checked in pay
+    #[account(seeds = [b"status", handle.as_bytes()], bump)]
+    pub status: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
 #[account]
 #[derive(InitSpace)]
-pub struct Endorsement {
-    pub address: Pubkey,
-    pub text_hash: [u8; 32],
-    pub timestamp: i64,
+pub struct Hardware {
+    pub key: [u8; 33],
+    pub evidence: [u8; 32],
+    pub generation: u64,
+}
+#[account]
+#[derive(InitSpace)]
+pub struct Authorization {
+    pub recipient: Pubkey,
+    pub expires_at: i64,
+    pub enabled: bool,
+    pub generation: u64,
+    pub approved_at: i64,
     #[max_len(MAX_HANDLE_LEN)]
     pub handle: String,
+}
+#[event]
+pub struct HardwareEnrolled {
+    pub handle: String,
+    pub key: [u8; 33],
+    pub evidence: [u8; 32],
+    pub generation: u64,
+}
+#[event]
+pub struct DestinationSet {
+    pub handle: String,
+    pub recipient: Pubkey,
+    pub expires_at: i64,
+    pub enabled: bool,
+    pub generation: u64,
+}
+#[event]
+pub struct Paid {
+    pub handle: String,
+    pub recipient: Pubkey,
+    pub payer: Pubkey,
+    pub lamports: u64,
 }
 
 /// Whether the owner has reported the handle as taken over. Seeds ["status", handle], so any
@@ -426,13 +636,14 @@ pub struct Status {
 #[account]
 #[derive(InitSpace)]
 pub struct Device {
-    /// The wallet that linked this device. Every later action must be signed by it.
+    /// The wallet that linked this device. Only it can enroll or replace the fingerprint key.
     pub owner: Pubkey,
-    /// The key that approves posts and the kill switch. Equal to `owner` when no separate
-    /// fingerprint key is used.
+    /// Unused since approvals moved to the attested key in `Hardware`; kept for account layout.
     pub approver: Pubkey,
     #[max_len(MAX_HANDLE_LEN)]
     pub handle: String,
+    /// One counter for every signed action (posts, destinations, suspension, key enrollment),
+    /// so no signature can be used twice.
     pub flag_count: u64,
 }
 
@@ -459,14 +670,6 @@ pub struct Attested {
 }
 
 #[event]
-pub struct Endorsed {
-    pub handle: String,
-    pub address: Pubkey,
-    pub owner: Pubkey,
-    pub sgt_mint: Pubkey,
-}
-
-#[event]
 pub struct Flagged {
     pub handle: String,
     pub compromised: bool,
@@ -476,6 +679,23 @@ pub struct Flagged {
 
 #[error_code]
 pub enum ThumbprintError {
+    #[msg("Enroll a verified biometric hardware key first")]
+    HardwareRequired,
+    #[msg("Authorization expiry must be in the future and within seven days")]
+    InvalidExpiry,
+    #[msg("The actual payment recipient does not match the approved recipient")]
+    WrongRecipient,
+    #[msg("This destination approval has been revoked")]
+    Revoked,
+    #[msg("This destination approval has expired")]
+    Expired,
+    #[msg("Approve the destination again after changing the hardware key")]
+    KeyChanged,
+    #[msg("Payment amount must be positive")]
+    InvalidAmount,
+    #[msg("Action counter exhausted")]
+    CounterOverflow,
+
     #[msg("Signer does not hold a Seeker Genesis Token")]
     NotSeeker,
     #[msg("The device did not sign this action")]
@@ -488,10 +708,6 @@ pub enum ThumbprintError {
     NotVerified,
     #[msg("This device was linked by a different wallet")]
     NotOwner,
-    #[msg("The approved post does not contain this address")]
-    AddressNotInPost,
-    #[msg("This account's phone never approved this address")]
-    NeverApproved,
     #[msg("The owner reported this account as taken over")]
     ReportedCompromised,
 }

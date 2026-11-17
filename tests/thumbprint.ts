@@ -3,10 +3,13 @@ import { Program } from "@coral-xyz/anchor";
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { createHash, createPrivateKey, sign } from "node:crypto";
+import { createHash, createPrivateKey, sign, generateKeyPairSync } from "node:crypto";
 import type { Thumbprint } from "../target/types/thumbprint";
-import { approverMessage, attestMessage, bindMessage, flagMessage } from "../phone/messages.ts";
+import { attestMessage, bindMessage, flagMessage, hardwareMessage, destinationMessage, domain } from "../phone/messages.ts";
 
+import { p256Instruction } from "../server/signatures.ts";
+
+type PublicKey = anchor.web3.PublicKey;
 const { Keypair, PublicKey, Ed25519Program } = anchor.web3;
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8"));
 
@@ -21,126 +24,147 @@ describe("thumbprint", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.thumbprint as Program<Thumbprint>;
-
   const owner = Keypair.fromSecretKey(Uint8Array.from(fixture("owner.json")));
+  const verifier = Keypair.fromSecretKey(Uint8Array.from(fixture("verifier.json")));
   const sgtMint = new PublicKey("5mXbkqKz883aufhAsx3p5Z1NcvD2ppZbdTTznM6oUKLj");
   const sgtTokenAccount = new PublicKey(fixture("sgt_token_account.json").pubkey);
-  // Stands in for the key the app keeps in the phone's secure hardware, unlocked by a fingerprint.
-  let thumb = Keypair.generate();
-  const verifier = Keypair.fromSecretKey(Uint8Array.from(fixture("verifier.json")));
   const handle = "x:tester";
-  const text = "hello from a real thumb";
   const accounts = { owner: owner.publicKey, sgtTokenAccount, sgtMint };
-  const events = async (signature: string) => {
-    await provider.connection.confirmTransaction(signature, "confirmed");
-    const transaction = await provider.connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-    return [...new anchor.EventParser(program.programId, program.coder).parseLogs(transaction.meta.logMessages)];
+  const derive = (...seeds: Buffer[]) => PublicKey.findProgramAddressSync(seeds, program.programId)[0];
+  const device = derive(Buffer.from("device"), sgtMint.toBuffer());
+  const hardware = derive(Buffer.from("hardware"), device.toBuffer());
+  const authorization = derive(Buffer.from("treasury"), Buffer.from(handle));
+  const status = derive(Buffer.from("status"), Buffer.from(handle));
+  const handleClaim = derive(Buffer.from("handle"), Buffer.from(handle));
+  let thumb = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const compressed = () => {
+    const jwk = thumb.publicKey.export({ format: "jwk" });
+    const y = Buffer.from(jwk.y!, "base64url");
+    return Buffer.concat([Buffer.from([2 + (y[31] & 1)]), Buffer.from(jwk.x!, "base64url")]);
   };
-  const rejects = async (work: Promise<unknown>, code: string) => {
-    const error: any = await work.then(() => null, (thrown) => thrown);
-    assert.equal(error?.error?.errorCode?.code, code);
+  const signed = (message: string) => p256Instruction(compressed(), message, sign("sha256", Buffer.from(message), thumb.privateKey));
+  const count = async () => Number((await program.account.device.fetch(device)).flagCount);
+  const reject = async (work: Promise<unknown>, code?: string) => {
+    const error: any = await work.then(() => null, e => e);
+    assert.ok(error, "unexpected success");
+    if (code) assert.equal(error?.error?.errorCode?.code, code, String(error));
   };
+  const evidence = Buffer.alloc(32, 7); // trusted verifier policy is tested separately offchain
+  const enroll = async (signer = verifier, nonce?: number) => program.methods
+    .enrollHardware([...compressed()], [...evidence])
+    .accountsPartial({ payer: provider.wallet.publicKey, verifier: signer.publicKey, ...accounts })
+    .preInstructions([deviceSignature(owner, hardwareMessage(handle, compressed().toString("hex"), evidence.toString("hex"), nonce ?? await count(), "localnet"))])
+    .signers([signer]).rpc();
+  const setDestination = async (recipient: PublicKey, expiry: number, enabled = true, nonce?: number, messageHandle = handle, network = "localnet", sign = signed) => program.methods
+    .setDestination(recipient, new anchor.BN(expiry), enabled)
+    .accountsPartial({ payer: provider.wallet.publicKey, ...accounts })
+    .preInstructions([sign(destinationMessage(messageHandle, recipient.toBase58(), expiry, enabled, nonce ?? await count(), network))]).rpc();
+  const pay = (recipient: PublicKey, amount = 1_000_000) => program.methods.pay(handle, new anchor.BN(amount))
+    .accountsPartial({ payer: provider.wallet.publicKey, recipient, handleClaim, device, hardware, authorization, status }).rpc();
+  const expiry = () => Math.floor(Date.now() / 1000) + 3600;
+  const recipient = Keypair.generate().publicKey;
 
-  // A program loaded at genesis is not callable until the validator has moved past its first slots.
-  before(async () => {
-    while ((await provider.connection.getSlot()) < 3) await new Promise((resolve) => setTimeout(resolve, 200));
-  });
+  before(async () => { while ((await provider.connection.getSlot()) < 3) await new Promise(r => setTimeout(r, 200)); });
 
-  it("binds a handle and records a post the device signed", async () => {
-    const bind = (signer: anchor.web3.Keypair) =>
-      program.methods
-        .bind(handle, thumb.publicKey)
-        .accounts({ payer: provider.wallet.publicKey, verifier: signer.publicKey, ...accounts })
-        .preInstructions([deviceSignature(owner, bindMessage(handle, thumb.publicKey.toBase58()))])
-        .signers([signer])
-        .rpc();
-    await rejects(bind(Keypair.generate()), "NotVerified"); // the device alone cannot claim a handle
-    const impostor = Keypair.generate(); // signs correctly but does not hold the Genesis Token
-    await rejects(
-      program.methods
-        .bind(handle, thumb.publicKey)
-        .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts, owner: impostor.publicKey })
-        .preInstructions([deviceSignature(impostor, bindMessage(handle, thumb.publicKey.toBase58()))])
-        .signers([verifier])
-        .rpc(),
-      "NotSeeker",
-    );
-    await bind(verifier);
-
-    const signature = await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, text))]).rpc();
-    const [event] = await events(signature);
-    assert.equal(event.name, "attested");
-    assert.equal(event.data.handle, handle);
-    assert.deepEqual(Array.from(event.data.textHash), Array.from(createHash("sha256").update(text).digest()));
-    assert.equal(event.data.sgtMint.toBase58(), sgtMint.toBase58());
-  });
-
-  it("records an address named in an approved post where any program can find it", async () => {
-    const mint = Keypair.generate().publicKey;
-    const post = `Our only token is ${mint.toBase58()}. Anything else is fake.`;
-    const endorse = (address: PublicKey) =>
-      program.methods.endorse(address).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([deviceSignature(thumb, attestMessage(handle, post))]).rpc();
-    await rejects(endorse(Keypair.generate().publicKey), "AddressNotInPost"); // the server cannot slip in another address
-    const names = (await events(await endorse(mint))).map((event) => event.name);
-    assert.deepEqual(names, ["attested", "endorsed"]);
-    const [record] = PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), mint.toBuffer()], program.programId);
-    assert.equal((await program.account.endorsement.fetch(record)).address.toBase58(), mint.toBase58());
-    // Anyone's transaction can carry the check. It passes for the approved address only, and
-    // stops passing the moment the owner reports the account as taken over.
-    const [status] = PublicKey.findProgramAddressSync([Buffer.from("status"), Buffer.from(handle)], program.programId);
-    const check = (address: PublicKey) =>
-      program.methods.check(handle, address).accounts({ endorsement: PublicKey.findProgramAddressSync([Buffer.from("address"), Buffer.from(handle), address.toBuffer()], program.programId)[0], status }).rpc();
-    await check(mint);
-    await rejects(check(Keypair.generate().publicKey), "NeverApproved");
-    const count = 0; // each report or key move uses the next number
-    const flag = (compromised: boolean, at: number) =>
-      program.methods.setCompromised(compromised).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([deviceSignature(thumb, flagMessage(handle, compromised, at))]).rpc();
-    await flag(true, count);
-    await rejects(check(mint), "ReportedCompromised");
-    await flag(false, count + 1);
-    await check(mint);
-  });
-
-  it("rejects an action with no device signature, or one signed for another account", async () => {
-    await rejects(program.methods.attest().accounts(accounts).rpc(), "NotSigned");
-    const wrongHandle = deviceSignature(thumb, attestMessage("x:someoneelse", text));
-    await rejects(program.methods.attest().accounts(accounts).preInstructions([wrongHandle]).rpc(), "WrongMessage");
-  });
-
-  it("rejects another wallet acting for this device", async () => {
+  it("binds only with handle verification and a Genesis Token holder", async () => {
+    const bind = (key: anchor.web3.Keypair) => program.methods.bind(handle, owner.publicKey)
+      .accountsPartial({ payer: provider.wallet.publicKey, verifier: key.publicKey, ...accounts })
+      .preInstructions([deviceSignature(owner, bindMessage(handle, owner.publicKey.toBase58()))]).signers([key]).rpc();
+    await reject(bind(Keypair.generate()), "NotVerified");
     const impostor = Keypair.generate();
-    const signed = deviceSignature(impostor, attestMessage(handle, text));
-    await rejects(program.methods.attest().accounts({ ...accounts, owner: impostor.publicKey }).preInstructions([signed]).rpc(), "NotOwner");
+    await reject(program.methods.bind(handle, impostor.publicKey)
+      .accountsPartial({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts, owner: impostor.publicKey })
+      .preInstructions([deviceSignature(impostor, bindMessage(handle, impostor.publicKey.toBase58()))]).signers([verifier]).rpc(), "NotSeeker");
+    await bind(verifier);
+    await reject(program.methods.attest().accountsPartial({ ...accounts, hardware }).preInstructions([deviceSignature(owner, attestMessage(handle, "text", 0, "localnet"))]).rpc());
   });
 
-  it("flags the account as compromised, and refuses a replayed signature", async () => {
-    const report = deviceSignature(thumb, flagMessage(handle, true, 2));
-    const [event] = await events(await program.methods.setCompromised(true).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([report]).rpc());
-    assert.equal(event.name, "flagged");
-    assert.equal(event.data.compromised, true);
-    await rejects(program.methods.setCompromised(true).accounts({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([report]).rpc(), "WrongMessage");
+  it("requires verifier approval for hardware enrollment and prevents replay", async () => {
+    await reject(enroll(Keypair.generate()), "NotVerified");
+    await enroll();
+    await reject(enroll(verifier, 0), "WrongMessage");
+    assert.deepEqual((await program.account.hardware.fetch(hardware)).key, [...compressed()]);
   });
 
-  it("accepts only the fingerprint key for posts, and lets the wallet move it", async () => {
-    // The wallet key alone (which a PIN can unlock) cannot approve a post.
-    await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(owner, attestMessage(handle, text))]).rpc(), "NotSigned");
-    const replacement = Keypair.generate();
-    const move = approverMessage(handle, replacement.publicKey.toBase58(), 3);
-    await rejects(program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(thumb, move)]).rpc(), "NotSigned");
-    await program.methods.setApprover(replacement.publicKey).accounts(accounts).preInstructions([deviceSignature(owner, move)]).rpc();
-    await rejects(program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, "old key"))]).rpc(), "NotSigned");
-    thumb = replacement;
-    await program.methods.attest().accounts(accounts).preInstructions([deviceSignature(thumb, attestMessage(handle, "new key"))]).rpc();
+  it("verifies P-256 post signatures and rejects wallet/PIN or modified content", async () => {
+    const text = "Claim at https://example.com/legit?to=alice";
+    const attest = (proof: anchor.web3.TransactionInstruction) => program.methods.attest().accountsPartial(accounts).preInstructions([proof]).rpc();
+    const approval = signed(attestMessage(handle, text, await count(), "localnet"));
+    await attest(approval);
+    // The captured signature cannot be submitted again to make an old approval look fresh.
+    await reject(attest(approval), "WrongMessage");
+    await reject(attest(deviceSignature(owner, attestMessage(handle, text, await count(), "localnet"))), "NotSigned");
+    await reject(attest(signed(attestMessage("x:attacker", text, await count(), "localnet"))), "WrongMessage");
+    await reject(attest(signed(attestMessage(handle, text, await count(), "devnet"))), "WrongMessage");
+    const altered = signed(attestMessage(handle, text, await count(), "localnet")); altered.data[altered.data.length - 1] ^= 1;
+    await reject(attest(altered));
+    await attest(signed(attestMessage(handle, text, await count(), "localnet"))); // approving the same words again takes a new signature
   });
 
-  it("rejects a second handle for the same device", async () => {
-    const error = await program.methods
-      .bind("x:second", thumb.publicKey)
-      .accounts({ payer: provider.wallet.publicKey, verifier: verifier.publicKey, ...accounts })
-      .preInstructions([deviceSignature(owner, bindMessage("x:second", thumb.publicKey.toBase58()))])
-      .signers([verifier])
-      .rpc()
-      .then(() => null, (thrown) => thrown);
-    assert.ok(error, "second bind was accepted");
+  it("never authorizes an address by mentioning it in a signed warning", async () => {
+    const warning = `Do not buy ${recipient}; this is a scam.`;
+    await program.methods.attest().accountsPartial(accounts).preInstructions([signed(attestMessage(handle, warning, await count(), "localnet"))]).rpc();
+    assert.equal(await program.account.authorization.fetchNullable(authorization), null);
+    await reject(pay(recipient));
+  });
+
+  it("enforces explicit recipient, expiry bounds, counter, handle and deployment", async () => {
+    await reject(setDestination(recipient, 1), "InvalidExpiry");
+    await reject(setDestination(recipient, expiry() + 8 * 86400), "InvalidExpiry");
+    await reject(setDestination(recipient, expiry(), true, undefined, "x:attacker"), "WrongMessage");
+    await reject(setDestination(recipient, expiry(), true, undefined, handle, "devnet"), "WrongMessage");
+    const nonce = await count(), expires = expiry();
+    await setDestination(recipient, expires, true, nonce);
+    await reject(setDestination(recipient, expires, true, nonce), "WrongMessage");
+    const state = await program.account.authorization.fetch(authorization);
+    assert.equal(state.recipient.toBase58(), recipient.toBase58());
+  });
+
+  it("transfers to the authorized recipient, rejects an actual recipient substitution", async () => {
+    const before = await provider.connection.getBalance(recipient);
+    await pay(recipient);
+    assert.equal(await provider.connection.getBalance(recipient), before + 1_000_000);
+    const attacker = Keypair.generate().publicKey;
+    await reject(pay(attacker), "WrongRecipient");
+    assert.equal(await provider.connection.getBalance(attacker), 0);
+    await reject(pay(recipient, 0), "InvalidAmount");
+  });
+
+  it("checks suspension at execution, then allows recovery", async () => {
+    const flag = async (compromised: boolean) => {
+      const message = `${domain("localnet")}\nReport ${handle} as ${compromised ? "compromised" : "recovered"} (#${await count()})`;
+      return program.methods.setCompromised(compromised).accountsPartial({ payer: provider.wallet.publicKey, ...accounts }).preInstructions([signed(message)]).rpc();
+    };
+    await flag(true);
+    await reject(pay(recipient), "ReportedCompromised");
+    await flag(false);
+    await pay(recipient);
+  });
+
+  it("revokes and replaces destinations without resurrecting old approvals", async () => {
+    await setDestination(recipient, expiry(), false);
+    await reject(pay(recipient), "Revoked");
+    const replacement = Keypair.generate().publicKey;
+    await setDestination(replacement, expiry());
+    await reject(pay(recipient), "WrongRecipient");
+    await pay(replacement);
+  });
+
+  it("expires approvals at execution", async () => {
+    await setDestination(recipient, Math.floor(Date.now() / 1000) + 3);
+    await new Promise(r => setTimeout(r, 4500));
+    await reject(pay(recipient), "Expired");
+  });
+
+  it("rotation needs the verifier and invalidates earlier payment authorization", async () => {
+    await setDestination(recipient, expiry());
+    thumb = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+    await reject(enroll(Keypair.generate()), "NotVerified");
+    await enroll();
+    await reject(pay(recipient), "KeyChanged");
+    await setDestination(recipient, expiry());
+    await pay(recipient);
+    // The wallet alone, which may accept a PIN, can no longer approve anything.
+    await reject(setDestination(recipient, expiry(), true, undefined, handle, "localnet", (message) => deviceSignature(owner, message)), "NotSigned");
   });
 });

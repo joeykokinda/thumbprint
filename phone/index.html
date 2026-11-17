@@ -12,11 +12,15 @@
   /* Same type, labels and edges as the website, on black. */
   :root { --accent: #14f195; --danger: #ff5a64; --text: #f1f0ea; --muted: #8a8c85; --border: #2a2c28; --surface: #121311; --sans: "Host Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace; }
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { min-height: 100%; }
   body { margin: 0; background: #000; color: var(--text); font: 400 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
-  main { display: flex; flex-direction: column; gap: 12px; min-height: 100%; max-width: 480px; margin: 0 auto; padding: 32px 20px calc(24px + env(safe-area-inset-bottom)); }
-  section { margin-bottom: auto; }
-  .hero { padding-top: 10vh; }
+  main { display: flex; flex-direction: column; gap: 12px; min-height: 100dvh; max-width: 480px; margin: 0 auto; padding: 24px 20px calc(24px + env(safe-area-inset-bottom)); }
+  main > * { flex-shrink: 0; min-width: 0; }
+  section { margin: 0; }
+  .hero { padding-top: clamp(12px, 4vh, 40px); }
+  .payment-panel { display: grid; gap: 12px; border-top: 1px dashed var(--border); padding-top: 20px; margin-top: 8px; }
+  code { display: block; overflow-wrap: anywhere; white-space: normal; font: 13px/1.6 var(--mono); color: var(--text); }
+  .busy-status { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 14px 20px; background: #121311; border-top: 1px solid var(--accent); color: var(--accent); font-size: 14px; text-align: center; pointer-events: none; }
   .glyph { width: 56px; height: 56px; margin: 0 0 24px; color: var(--accent); }
   .glyph svg { display: block; width: 100%; height: 100%; }
   .danger .glyph, .hero.danger h1 { color: var(--danger); }
@@ -44,7 +48,9 @@
   .field { display: flex; align-items: center; gap: 4px; padding: 0 16px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
   .field:focus-within { border-color: var(--accent); }
   .field span { color: var(--muted); }
-  input { flex: 1; min-width: 0; height: 54px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; }
+  input { flex: 1; min-width: 0; width: 100%; height: 54px; border: 1px solid var(--border); border-radius: 4px; padding: 0 14px; outline: 0; background: var(--surface); color: var(--text); font: inherit; }
+  .field input { border: 0; padding: 0; background: none; }
+  input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   textarea { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 4px; outline: 0; resize: none; background: var(--surface); color: var(--text); font: inherit; font-size: 19px; line-height: 1.35; }
   textarea:focus { border-color: var(--accent); }
   dl { margin: 0; border-top: 1px dashed var(--border); }

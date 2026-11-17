@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Thumbprint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See which posts were approved on a real device, and get warned when an account that signs its posts publishes one that is not signed.",
   "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
   "permissions": ["storage"],
-  "host_permissions": ["https://thumbprint.pyras.org/*", "http://localhost:8787/*"],
+  "host_permissions": ["https://thumbprint.pyras.org/*", "https://api.devnet.solana.com/*", "http://localhost:8787/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "Thumbprint" },
   "content_scripts": [

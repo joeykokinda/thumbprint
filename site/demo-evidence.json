@@ -1,0 +1,29 @@
+{
+  "network": "devnet",
+  "program": "EerbNxsSbeADJLet2sYBZwC9eKmQPYDv3UaohaMRmriS",
+  "handle": "x:spekthumbprint",
+  "scenarios": {
+    "approved": {
+      "signature": "4MoSozd2LwrkbaAw6EWaZSPWhZjfjDogkLJSnt9CzjbBYdWiM3XYjshrPW2YrgooVonN8btLxmFAUiQq98HQe8PW",
+      "recipient": "5RPLUJsvTDjPzwk6eB9169ixMk1mvydvD2Nwy9hzxm6z",
+      "payer": "8F8KLTdrGZ8wHXedWhdTZMzu9p5VjFtA9MVDB96KMURe",
+      "lamports": 1000,
+      "recipientChange": 1000,
+      "fee": 5000,
+      "rejected": false,
+      "reason": null,
+      "recordedAt": "2026-11-17T01:41:32.382Z"
+    },
+    "substitution": {
+      "signature": "xS7pap2ZAaybiMJMB3TL9aYvEpDBJ3y26u8uKCq2HBSaAoqEfrgYL6tr7bMD2chmnpWrZvyebRzjJkXvGk7Wuar",
+      "recipient": "EsoFxomk8CLvbeFa3MKATDszegh7GmFCyaCsNzLw35Ah",
+      "payer": "8F8KLTdrGZ8wHXedWhdTZMzu9p5VjFtA9MVDB96KMURe",
+      "lamports": 1000,
+      "recipientChange": 0,
+      "fee": 5000,
+      "rejected": true,
+      "reason": "WrongRecipient",
+      "recordedAt": "2026-11-17T01:41:35.051Z"
+    }
+  }
+}
