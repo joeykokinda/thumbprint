@@ -24,14 +24,20 @@ BEATS = [
     ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("late", "title", None)]),
     ("what", [(V, 21.3, 31.5)], [("hold", "title", 3.4), ("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
     ("owner", [(V, 32.9, 44.5)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 3.3), ("v", "phone-post-cfr.mp4", 19.0, 3.7), ("v", "phone-post-cfr.mp4", 82.5, None)], [("s", "x-feed.jpg", 1700, 300, 595, 612, None)]), None)]),
+    ("review", [("cam4", 124.1, 131.2)], [("wide", [("v", "phone-post-cfr.mp4", 17.0, None, "1200:800:0:945")], None)]),
     ("follower", [(V, 44.6, 53.5)], [("wide", [("s", "x-feed.jpg", 1700, 100, 85, 365, 5.6), ("s", "x-popup.jpg", 1700, 100, 365, 365, 2.2), ("v", "chrome-approved.mp4", 22.5, None, "1110:740:395:215")], None)]),
-    ("pay", [(V, 53.6, 59.5)], [("wide", [("s", "pay.png", 1900, 130, 0, 300, 3.2), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
+    ("pay", [(V, 53.5, 54.72, "It's the same for money."), ("cam2", 90.6, 96.1), ("cam2", 102.15, 107.1)],
+     [("split", ([("v", "phone-tour-cfr.mp4", 8.5, None)], [("s", "pay.png", 1400, 98, 0, 120, None)]), 7.6), ("wide", [("s", "pay.png", 1900, 130, 0, 300, 3.2), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
     ("hacker", [(V, 68.1, 77.8)], [("split", ([("v", "phone-hack-cfr.mp4", 50.0, None)], [("s", "x-feed.jpg", 1500, 215, 40, 70, None)]), None)]),
-    ("reject", [(V, 77.85, 87.5)], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("reject", [(V, 77.85, 81.3)], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("change", [("cam2", 135.5, 140.5), (V, 81.9, 87.5)], [("split", ([("v", "phone-tour-cfr.mp4", 9.0, None)], [("s", "pay.png", 1400, 98, 0, 120, None)]), None)]),
     ("kill", [(V, 88.6, 98.9)], [("split", ([("v", "phone-kill-cfr.mp4", 11.8, 2.7), ("v", "phone-kill-cfr.mp4", 19.0, 1.4), ("v", "phone-kill-cfr.mp4", 30.5, 1.2), ("v", "phone-kill-cfr.mp4", 37.0, None)],
                                           [("s", "x-feed.jpg", 1700, 300, 595, 612, 4.4), ("s", "tx-stop.png", 3648, 440, 6110, 6150, None)]), None)]),
-    ("tech", [(V, 99.0, 106.3), (V, 121.0, 132.9)], [("clip", "tech", None)]),
-    ("adopt", [(V, 133.1, 139.7)], [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, None)], None)]),
+    ("seeker", [("cam3", 31.1, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 0.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
+    ("tech", [(V, 100.5, 106.3), (V, 121.0, 132.9)], [("clip", ("tech", 1.5), None)]),
+    ("verify", [("cam2", 249.3, 253.6, "The payment and the check are the same instruction, so you can't approve one address and pay another.", 0.5), ("cam2", 259.3, 262.3)], [("wide", [("s", "tx-ok.png", 2800, 290, 305, 900, None)], None)]),
+    ("adopt", [(V, 133.1, 139.7), ("cam3", 240.0, 242.3, "Today it's a browser extension and a Seeker app,", 0.25), ("cam3", 247.6, 250.4, "and the same check can live inside wallets.")],
+     [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, 7.2), ("s", "home.png", 1500, 0, 0, 300, None)], None)]),
     ("close", [(V, 141.9, 145.25, "Your password can be stolen, but your fingerprint can't.")], [("clip", "end", None)]),
 ]
 FIX.update({"$700": "$700,000.", ",000.": "", "recreated": "created", "was": "is", "looked": "looks", "his": "his"})
@@ -70,9 +76,12 @@ def say(take, a, b, spoken, gap):
     run("-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vn", "-ac", "1", "-ar", str(RATE),
         "-af", f"afade=t=in:d=0.02,afade=t=out:st={b - a - 0.03:.3f}:d=0.03", path)
     clip = wave.open(path)
+    samples = array.array("h", clip.readframes(clip.getnframes()))
+    loud = sorted(abs(x) for x in samples)[int(len(samples) * 0.95)] or 1  # takes come from different mics: match their level
+    samples = array.array("h", (max(-32000, min(32000, int(x * 6000 / loud))) for x in samples))
     captions.extend((clock + x, clock + y, FIX.get(word, word)) for x, y, word in spoken if FIX.get(word, word))
     camera.append([take, a, clip.getnframes() / RATE])
-    voice.writeframes(clip.readframes(clip.getnframes())); clock += clip.getnframes() / RATE
+    voice.writeframes(samples.tobytes()); clock += clip.getnframes() / RATE
     silence(gap)
 
 for name, pieces, visuals in BEATS:
@@ -97,7 +106,7 @@ for name, pieces, visuals in BEATS:
         for group in runs:
             a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.2
             say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.45)
-    silence(3.0 if name == "close" else 1.15)
+    silence(2.6 if name == "close" else 0.8)
     first[name] = camera[mark][1]
     timing.append((name, begin, clock, visuals))
 voice.close()
@@ -186,7 +195,8 @@ for name, begin, end, visuals in timing:
         path = f"{HERE}/work/v/{name}-{index}.mp4"; parts.append(path); starts.append(at); at += duration
         t = f"{duration + FADE:.3f}"  # each part runs a little long so the next can fade in over it
         if kind == "clip":
-            run("-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
+            argument, skip = argument if isinstance(argument, tuple) else (argument, 0)
+            run("-ss", str(skip), "-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
         elif kind == "late":
             run("-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=start_mode=clone:start_duration={max(0, duration - 0.9):.3f}:stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
         elif kind == "hold":
