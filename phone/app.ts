@@ -369,7 +369,7 @@ function body(): string {
       <button class="quiet" data-action="cancelKill">Cancel</button>`;
 
   return `<section class="hero"><div class="glyph">${GLYPH}</div><h1>Protecting ${escapeHtml(name)}</h1>
-      <p>${state.lastSigned ? "Signed. Your post is going out." : NATIVE ? "Write a post here, in the X tab, or on your computer. It goes out only with your fingerprint." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
+      <p>${state.lastSigned ? "Signed. Your post is going out." : NATIVE ? "Write a post here or on your computer. It goes out only with your fingerprint." : state.online ? "Posts you write on your computer appear here for approval." : session ? "Reconnecting to your computer…" : "Scan the code in the Thumbprint extension to pair this phone."}</p></section>
       ${NATIVE ? `<form data-action="compose"><textarea name="text" required rows="4" maxlength="280" placeholder="Write a post"></textarea>
       <button class="primary">Approve and post</button></form>` : ""}
       <dl><div><dt>Device</dt><dd>Seeker ${short(device.sgtMint)}</dd></div><div><dt>Wallet</dt><dd>${short(device.owner)}</dd></div>

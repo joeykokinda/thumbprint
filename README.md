@@ -65,7 +65,7 @@ approved text inside that window.
 
 | Part | Path | Responsibility |
 | --- | --- | --- |
-| Android app | `android/` | Attested P-256 key, native message review, per-operation biometric prompt, X reader tab |
+| Android app | `android/` | Attested P-256 key, native message review, per-operation biometric prompt |
 | Phone UI | `phone/` | Wallet linking, enrollment, post approval, destination approval, revocation, suspension |
 | Enrollment verifier | `attestation/` | Google's maintained verifier plus Thumbprint's app and authentication policy |
 | Relay/indexer | `server/` | Handle proof, enrollment challenges/tickets, fee payer, receipts, post lookup |

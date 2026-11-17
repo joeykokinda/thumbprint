@@ -121,6 +121,9 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.BLACK);
+        // The X tab is hidden: X only offers Google sign-in to some accounts and that cannot finish inside a WebView.
+        // Posting goes out through the browser after the fingerprint instead. Show the bar again to bring the tab back.
+        tabs.setVisibility(View.GONE);
         root.addView(tabs);
         root.addView(pages, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(root);
