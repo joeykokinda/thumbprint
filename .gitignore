@@ -8,3 +8,7 @@ test-ledger
 *.sqlite
 android/build/
 attestation/build/
+media/footage/
+media/work/
+media/out/
+media/clips/

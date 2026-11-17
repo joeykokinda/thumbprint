@@ -1,0 +1,104 @@
+<!doctype html><html><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Host+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f5f4ef;--ink:#141412;--muted:#66655f;--line:#d6d4ca;--accent:#0a8a5c;--alert:#d23f1c;--term:#0c0d0c;--glow:#14f195;--sans:"Host Grotesk",system-ui,sans-serif;--mono:"Geist Mono",ui-monospace,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{width:1280px;height:720px;overflow:hidden}
+body{font:400 22px/1.4 var(--sans);color:var(--ink);background:var(--paper) repeating-linear-gradient(135deg,transparent 0 7px,rgba(20,20,18,.045) 7px 8px)}
+body.dark{background:var(--term);color:#e9ece5}
+.stage{position:absolute;inset:0;padding:70px 90px;display:none;flex-direction:column;justify-content:center}
+.stage.on{display:flex}
+.label{font:500 15px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.dark .label{color:#8f938b}
+.sq{display:inline-block;width:10px;height:10px;margin-right:12px;background:var(--accent)}.sq.alert{background:var(--alert)}
+h1{font:700 86px/.96 var(--sans);letter-spacing:-.04em;text-transform:uppercase}
+h1 span,.good{color:var(--accent)}.dark h1 span,.dark .good{color:var(--glow)}.bad{color:var(--alert)}.dark .bad{color:#ff6a4d}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}}
+@keyframes fade{from{opacity:0}}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes stamp{0%{opacity:0;transform:scale(1.6) rotate(-6deg)}60%{opacity:1;transform:scale(.96) rotate(-6deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
+.a{animation:rise .55s cubic-bezier(.2,.7,.2,1) both}
+.rows{margin-top:34px;border-top:1px solid var(--line)}
+.rows div{display:grid;grid-template-columns:1fr 190px 330px;align-items:baseline;gap:24px;padding:20px 0;border-bottom:1px solid var(--line)}
+.rows b{font:700 42px/1 var(--sans);letter-spacing:-.03em;text-transform:uppercase}
+.rows i{font:500 17px/1 var(--mono);font-style:normal;letter-spacing:.12em;color:var(--muted)}
+.rows em{font:600 19px/1.2 var(--mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--alert);text-align:right}
+.post{width:560px;background:#fff;border:1px solid #e3e8ea;border-radius:16px;padding:18px 20px;font:400 20px/1.35 system-ui,sans-serif;color:#0f1419;box-shadow:0 24px 50px -30px rgba(20,20,18,.5)}
+.post .who{display:flex;gap:10px;align-items:center;margin-bottom:8px}.post .av{width:44px;height:44px;border-radius:50%;background:#141412}
+.post b{font-weight:700}.post small{color:#536471;font-size:17px}
+.post code{font:500 16px var(--mono);background:#f2f4f5;padding:2px 6px;border-radius:5px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px}
+.tag{display:inline-block;margin-bottom:14px;padding:6px 12px;font:600 15px/1 var(--mono);letter-spacing:.14em;border:1px solid currentColor}
+.cols{display:grid;grid-template-columns:1fr 90px 1fr 90px 1fr;align-items:center;margin-top:50px}
+.box{border:1px solid var(--line);background:#fbfaf6;padding:28px 26px;min-height:230px}
+.dark .box{border-color:#2c2f2b;background:#141614}
+.box h3{font:700 34px/1 var(--sans);letter-spacing:-.03em;text-transform:uppercase;margin:14px 0 12px}
+.box p{font-size:20px;color:var(--muted)}.dark .box p{color:#a3a79e}
+.wire{height:2px;background:var(--accent);transform-origin:left;animation:grow .5s ease both}.dark .wire{background:var(--glow)}
+.chain{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px}
+.chain .box{min-height:250px;position:relative}
+.chain .n{font:600 15px var(--mono);letter-spacing:.14em;color:var(--glow)}
+.stampbox{align-items:center;text-align:center}
+.stamp{display:inline-block;margin-top:34px;padding:16px 34px;border:6px solid var(--alert);color:var(--alert);font:800 74px/1 var(--sans);letter-spacing:-.02em;text-transform:uppercase;animation:stamp .5s cubic-bezier(.2,.9,.3,1.2) both}
+.stamp.ok{border-color:var(--accent);color:var(--accent)}
+.glyph{width:120px;height:120px;color:var(--accent)}.dark .glyph{color:var(--glow)}
+.big{font:700 60px/1 var(--sans);letter-spacing:-.035em;text-transform:uppercase}
+</style>
+<body>
+<section class="stage" id="hacks"><span class="label a"><i class="sq alert"></i>Hacked X accounts</span>
+<p class="big a" style="margin-top:18px">It happens <span class="bad">all the time.</span></p>
+<div class="rows">
+<div class="a" style="animation-delay:.3s"><b>Vitalik Buterin</b><i>SEP 2023</i><em>$691K stolen</em></div>
+<div class="a" style="animation-delay:1.0s"><b>U.S. SEC</b><i>JAN 2024</i><em>Fake ETF approval</em></div>
+<div class="a" style="animation-delay:2.4s"><b>OpenAI Newsroom</b><i>SEP 2024</i><em>Fake $OPENAI token</em></div>
+<div class="a" style="animation-delay:1.7s"><b>MicroStrategy</b><i>FEB 2024</i><em>$440K stolen</em></div>
+</div></section>
+
+<section class="stage" id="play"><span class="label a"><i class="sq alert"></i>The same play every time</span>
+<div class="pair"><div class="a" style="animation-delay:.3s"><span class="tag good">REAL POST</span><div class="post"><div class="who"><div class="av"></div><div><b>Project</b> <small>@project · 2m</small></div></div>Our token is live. $PRJ<br>CA: <code>7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU</code></div></div>
+<div class="a" style="animation-delay:1.3s"><span class="tag bad">HACKER'S POST</span><div class="post"><div class="who"><div class="av"></div><div><b>Project</b> <small>@project · now</small></div></div>Our token is live. $PRJ<br>CA: <code>9hAcK3rWa11etxPq2mVn8sLd4yTb6uZc1oJf5gRe7iKw</code></div></div></div>
+<p class="big a" style="margin-top:44px;animation-delay:2.4s">Same account. <span class="bad">No way to tell.</span></p></section>
+
+<section class="stage" id="password"><span class="label a"><i class="sq alert"></i>The real problem</span>
+<p class="a" style="margin-top:18px;max-width:900px;font-size:34px;line-height:1.25;color:var(--muted)">A project's X account is how it tells people <b style="color:var(--ink)">what to buy</b> and <b style="color:var(--ink)">where to send money.</b></p>
+<h1 class="a" style="margin-top:30px;animation-delay:.2s">One password.</h1><h1 class="a" style="animation-delay:1.0s">One account.</h1><h1 class="a bad" style="animation-delay:1.8s">One point of failure.</h1></section>
+
+<section class="stage stampbox" id="title"><svg class="glyph a" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>
+<h1 class="a" style="margin-top:26px;font-size:128px;animation-delay:.25s">Thumbprint</h1>
+<p class="label a" style="margin-top:28px;font-size:20px;animation-delay:.9s">Approval moves out of the X account, into your fingerprint.</p></section>
+
+<section class="stage" id="pieces"><span class="label a"><i class="sq"></i>Two pieces, Solana in the middle</span>
+<div class="cols"><div class="box a" style="animation-delay:.2s"><span class="label">Founder</span><h3>Seeker app</h3><p>Approves posts and payment addresses with a fingerprint.</p></div>
+<div class="wire" style="animation-delay:.9s"></div>
+<div class="box a" style="animation-delay:1.1s"><span class="label">Enforced by</span><h3 class="good">Solana</h3><p>Verifies every signature and holds the approved state.</p></div>
+<div class="wire" style="animation-delay:1.8s"></div>
+<div class="box a" style="animation-delay:2.0s"><span class="label">Follower</span><h3>Chrome extension</h3><p>Checks each post against Solana and marks it on X.</p></div></div></section>
+
+<section class="stage" id="tech"><span class="label a"><i class="sq"></i>No step trusts our server</span>
+<div class="chain"><div class="box a" style="animation-delay:.2s"><span class="n">01 / SEEKER</span><h3>Key in secure hardware</h3><p>P-256 key generated in the phone's trusted environment. It never leaves.</p></div>
+<div class="box a" style="animation-delay:1.3s"><span class="n">02 / ANDROID</span><h3>Attested</h3><p>Certificate chain to Google's root proves how the key was made. Checked before enrollment.</p></div>
+<div class="box a" style="animation-delay:2.4s"><span class="n">03 / FINGERPRINT</span><h3>Every signature</h3><p>Biometric required each time. No PIN fallback.</p></div>
+<div class="box a" style="animation-delay:3.5s"><span class="n">04 / SOLANA</span><h3>Verified on chain</h3><p>P-256 precompile checks each signature. A counter makes it single use.</p></div></div></section>
+
+<section class="stage" id="intro"><span class="label a"><i class="sq"></i>Boiler Blockchain</span><h1 class="a" style="margin-top:20px">Joey Kokinda</h1><p class="big a" style="margin-top:34px;font-size:50px">A hacked account<br><span class="good">can't steal your followers.</span></p></section>
+
+<section class="stage" id="hacked"><span class="label a"><i class="sq alert"></i>Account compromised</span><h1 class="a bad" style="margin-top:22px">Now I'm the hacker.</h1><p class="big a" style="margin-top:26px;font-size:46px">I have the password. I have everything.</p></section>
+
+<section class="stage stampbox" id="attempt"><span class="label a" id="at-label"></span><h1 class="a" id="at-title" style="margin-top:20px;animation-delay:.15s"></h1><div><span class="stamp" id="at-stamp" style="animation-delay:.9s"></span></div></section>
+
+<section class="stage" id="next"><span class="label a"><i class="sq"></i>Who it's for</span>
+<h1 class="a" style="margin-top:20px;font-size:64px">Any project that posts<br>a contract address.</h1>
+<div class="pair" style="margin-top:44px"><div class="box a" style="min-height:0"><span class="label">Today</span><h3>Chrome extension<br>+ Seeker app</h3><p>The app has X built in, with the same marks on mobile.</p></div>
+<div class="box a" style="min-height:0"><span class="label">Next</span><h3 class="good">Inside wallets</h3><p>The same onchain check, before you sign.</p></div></div></section>
+
+<section class="stage stampbox" id="end"><svg class="glyph a" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 15v-3a8 8 0 0 1 3.2-6.4"/><path d="M10.4 4.16A8 8 0 0 1 20 12v4"/><path d="M8 19v-7a4 4 0 0 1 8 0v7"/><path d="M12 12v8"/></svg>
+<h1 class="a" style="margin-top:26px;animation-delay:.2s">Your password can be stolen.<br><span>Your fingerprint can't.</span></h1>
+<p class="label a" style="margin-top:34px;font-size:22px;animation-delay:1.1s">thumbprint.pyras.org · github.com/joeykokinda/thumbprint</p>
+<p class="label a" style="margin-top:12px;animation-delay:1.4s">Built on Solana · Seeker · devnet</p></section>
+<script>
+const q=new URLSearchParams(location.search),s=q.get("s")||"title";
+if(q.get("dark"))document.body.classList.add("dark");
+if(s==="attempt"){const n=q.get("n");document.getElementById("at-label").innerHTML='<i class="sq alert"></i>Attempt '+n;document.getElementById("at-title").textContent=q.get("t");const st=document.getElementById("at-stamp");st.textContent=q.get("r")||"Rejected";if(q.get("ok"))st.classList.add("ok");}
+if(q.get("d")){const d=q.get("d").split(",");document.querySelectorAll("#"+s+" .a, #"+s+" .wire").forEach((el,i)=>{if(d[i]!==undefined)el.style.animationDelay=d[i]+"s"})}
+document.fonts.ready.then(()=>document.getElementById(s).classList.add("on"));
+</script></html>
