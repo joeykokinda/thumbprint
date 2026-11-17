@@ -5,7 +5,6 @@ const parameters = new URLSearchParams(location.search);
 const signature = location.pathname.split("/").pop()!;
 verifyPostProof(signature, parameters.get("handle") || "", { hash: parameters.get("hash") || undefined }).then(proof => {
   status.textContent = "Verified directly with Solana: this exact text and its complete URLs were approved by the enrolled biometric key. The approval covers a post published within 15 minutes of it.";
-  status.style.color = "#14f195";
   document.getElementById("signed-text")!.textContent = proof.text;
   document.getElementById("approval-key")!.textContent = proof.key;
 }, error => {

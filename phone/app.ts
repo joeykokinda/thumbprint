@@ -173,8 +173,10 @@ const actions: Record<string, (form?: HTMLFormElement) => void> = {
   openLink: () => NATIVE!.openBrowser(`${location.origin}/phone?setup=1&session=${encodeURIComponent(session)}`),
   destination: (form) => run("Approving treasury destination", async () => {
     await refreshDevice();
-    const recipient = new PublicKey(new FormData(form!).get("recipient")!.toString().trim()).toBase58();
-    const expiresAt = Math.floor(Date.now() / 1000) + 86400;
+    const fields = new FormData(form!);
+    const recipient = new PublicKey(fields.get("recipient")!.toString().trim()).toBase58();
+    // Ten minutes under the choice, so a phone clock running fast cannot exceed the program's seven-day bound.
+    const expiresAt = Math.floor(Date.now() / 1000) + (fields.get("days") === "7" ? 7 : 1) * 86400 - 600;
     await signAndSubmit({ kind: "destination", recipient, expiresAt, enabled: true }, destinationMessage(state.device!.handle!, recipient, expiresAt, true, state.device!.flagCount));
     await refreshDevice();
   }),
@@ -375,7 +377,8 @@ function body(): string {
       ${NATIVE ? `<section class="payment-panel"><p class="eyebrow">Protected treasury payments · devnet</p>
       <p>${device.destination?.recipient ? `Current destination: <code>${escapeHtml(device.destination.recipient)}</code> · ${escapeHtml(device.destination.state)}` : "No payment destination approved yet."}</p>
       <form data-action="destination"><label for="recipient">Treasury SOL address</label><input id="recipient" name="recipient" required placeholder="Full Solana recipient address" autocomplete="off" spellcheck="false">
-      <p class="hint">Approval lasts 24 hours. Read the full address on the next screen.</p><button class="primary">Approve destination</button></form>
+      <label for="days">Approval lasts</label><select id="days" name="days"><option value="1">24 hours</option><option value="7">7 days</option></select>
+      <p class="hint">Read the full address on the next screen. You can revoke at any time.</p><button class="primary">Approve destination</button></form>
       ${device.destination?.recipient ? `<a class="button quiet" href="/pay?handle=${encodeURIComponent(device.handle)}" target="_blank" rel="noopener">Open protected payment page</a><button class="quiet danger" data-action="revokeDestination">Revoke destination</button>` : ""}</section>` : ""}
       <button class="quiet danger" data-action="askKill">Suspend account and payments</button>`;
 }
@@ -392,10 +395,10 @@ function render() {
   }
   document.getElementById("busy-status")?.remove();
   main.removeAttribute("aria-busy");
-  const values = new Map(Array.from(main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name]")).map(input => [input.name, input.value]));
+  const values = new Map(Array.from(main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name],select[name]")).map(input => [input.name, input.value]));
   const scroll = window.scrollY;
   main.innerHTML = body() + (state.error ? `<p class="error" role="alert">${escapeHtml(state.error)}</p>` : "") + (SOFTWARE ? `<p class="badge">Test signer. No Seeker, no fingerprint.</p>` : "");
-  main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name]").forEach(input => { if (values.has(input.name)) input.value = values.get(input.name)!; });
+  main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input[name],textarea[name],select[name]").forEach(input => { if (values.has(input.name)) input.value = values.get(input.name)!; });
   window.scrollTo(0, scroll);
 }
 

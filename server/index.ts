@@ -478,15 +478,15 @@ function proofPage(signature: string) {
     ["Signed by", attestation.owner],
     ["Post fingerprint", attestation.text_hash],
   ];
-  const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Thumbprint proof</title>
-<style>body{margin:0;background:#0b0f0e;color:#e7e9ea;font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh}
-main{max-width:560px;padding:32px 24px}h1{margin:0 0 4px;font-size:28px;color:#14f195}p{color:#aab3b0;margin:0 0 24px}
-dl{margin:0;border-top:1px solid #26302d}div{padding:12px 0;border-bottom:1px solid #26302d}dt{color:#aab3b0;font-size:13px}
-dd{margin:0;font-weight:600;overflow-wrap:anywhere}a{color:#14f195;font-weight:700}</style>
-<main><h1>Verify this approval</h1><p id="verification">Checking the signature and exact signed text directly with Solana…</p><pre id="signed-text" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre><p>Approval key: <code id="approval-key"></code></p>
-<dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
-<p style="margin-top:24px"><a href="https://explorer.solana.com/tx/${encodeURIComponent(signature)}?cluster=devnet">View the transaction on Solana</a></p></main><script type="module" src="/proof.js"></script>`;
+  const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approval proof · Thumbprint</title><link rel="icon" href="/icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Host+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/app.css">
+<main><header><a class="brand" href="/">Thumbprint</a><span class="label">Solana devnet</span></header>
+<section class="hero"><span class="label"><i class="sq"></i>Approval proof</span><h1>Approved with <span>a fingerprint.</span></h1>
+<p class="lede" id="verification">Checking the signature and the exact signed text directly with Solana…</p></section>
+<pre id="signed-text"></pre>
+<section class="card"><dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}<div><dt>Approval key</dt><dd id="approval-key"></dd></div></dl></section>
+<a class="btn ghost" href="https://explorer.solana.com/tx/${encodeURIComponent(signature)}?cluster=devnet">Open the transaction</a></main><script type="module" src="/proof.js"></script></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
@@ -546,7 +546,8 @@ Bun.serve<{ session: string }>({
     }
     if (url.pathname === "/v1/project") return guarded(authorizationFor(url.searchParams.get("handle") || ""));
     if (url.pathname === "/idl.json") return typed(JSON.stringify(idl), "application/json");
-    if (url.pathname === "/pay") return typed(Bun.file(new URL("../site/pay.html", import.meta.url)), "text/html; charset=utf-8");
+    if (url.pathname === "/app.css") return typed(Bun.file(new URL("../site/app.css", import.meta.url)), "text/css; charset=utf-8");
+    if (url.pathname === "/pay" || url.pathname === "/check") return typed(Bun.file(new URL("../site/pay.html", import.meta.url)), "text/html; charset=utf-8");
     if (url.pathname === "/demo") return typed(Bun.file(new URL("../site/demo.html", import.meta.url)), "text/html; charset=utf-8");
     if (url.pathname === "/demo-evidence.json") return typed(Bun.file(new URL("../site/demo-evidence.json", import.meta.url)), "application/json");
     if (url.pathname === "/v1/device") return guarded(device(url.searchParams.get("owner") || ""));
@@ -556,7 +557,6 @@ Bun.serve<{ session: string }>({
     }
     if (X_CONSUMER_KEY && url.pathname === "/auth/x") return startSignIn(url.searchParams.get("owner") || "", url.searchParams.get("session") || "");
     if (X_CONSUMER_KEY && url.pathname === "/auth/x/callback") return finishSignIn(url.searchParams.get("oauth_token") || "", url.searchParams.get("oauth_verifier") || "", url.searchParams.get("denied") || "");
-    if (url.pathname === "/check") return typed(Bun.file(new URL("../site/check.html", import.meta.url)), "text/html; charset=utf-8");
     if (url.pathname === "/") return typed(Bun.file(new URL("../site/index.html", import.meta.url)), "text/html; charset=utf-8");
     if (/^\/site\/[\w-]+\.png$/.test(url.pathname)) return typed(Bun.file(new URL(`..${url.pathname}`, import.meta.url)), "image/png");
     if (url.pathname.startsWith("/v1/address/")) return guarded(endorsements(url.pathname.slice(12)));

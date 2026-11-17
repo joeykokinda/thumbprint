@@ -45,7 +45,7 @@ async function refresh() {
   current = loaded;
   const a = loaded.approved;
   const evidence = loaded.key ? Buffer.from(loaded.key.evidence).toString("hex") : "";
-  record.innerHTML = `<section class="card"><span class="label">@${escape(handle.slice(2))} · Read directly from Solana</span><h2 class="${loaded.ok ? "good" : "bad"}">${loaded.state}</h2><dl><dt>Actual payment recipient</dt><dd>${a.recipient.toBase58()}</dd><dt>Approval expires</dt><dd>${escape(new Date(Number(a.expires_at) * 1000).toLocaleString())}</dd><dt>Public evidence</dt><dd><a target="_blank" rel="noopener" href="${explorer("address", loaded.authorization.toBase58())}">Authorization on Solana ↗</a>${evidence ? ` · <a target="_blank" rel="noopener" href="/v1/enrollment/evidence/${evidence}">Hardware enrollment evidence ↗</a>` : ""}</dd></dl></section>`;
+  record.innerHTML = `<section class="card"><span class="label"><i class="sq${loaded.ok ? "" : " alert"}"></i>@${escape(handle.slice(2))}</span><h2 class="${loaded.ok ? "good" : "bad"}">${loaded.state}</h2><dl><div><dt>Payment recipient</dt><dd>${a.recipient.toBase58()}</dd></div><div><dt>Approval expires</dt><dd>${escape(new Date(Number(a.expires_at) * 1000).toLocaleString())}</dd></div><div><dt>Evidence</dt><dd><a target="_blank" rel="noopener" href="${explorer("address", loaded.authorization.toBase58())}">Approval record on Solana</a>${evidence ? ` · <a target="_blank" rel="noopener" href="/v1/enrollment/evidence/${evidence}">Phone hardware attestation</a>` : ""}</dd></div></dl></section>`;
   (field("payment") as HTMLElement).hidden = !loaded.ok;
   history.replaceState(null, "", "?handle=" + encodeURIComponent(handle));
 }
