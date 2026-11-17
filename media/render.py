@@ -9,7 +9,7 @@ FPS = 30
 SCENES = [  # name, query, seconds. Delays (d=) are timed to the words in the cut, see edit.py.
     ("hacks", "s=hacks&d=0.1,0.2,3.8,4.4,5.0,5.7", 8.0), ("play", "s=play&d=0.1,0.3,1.5,4.9", 9.0), ("password", "s=password&d=0.1,0.3,7.9,8.8,9.5", 12.0),
     ("title", "s=title&dark=1&d=0,0.25,3.0", 5.0), ("pieces", "s=pieces&d=0.1,0.2,2.8,3.2,5.6,6.0", 8.0), ("hacked", "s=hacked&dark=1&d=0.1,0.2,2.3", 4.0),
-    ("tech", "s=tech&dark=1&d=0.1,0.2,8.7,16.4,19.7", 28.0), ("end", "s=end&dark=1", 5.0), ("touch", "s=touch&dark=1", 1.5),
+    ("tech", "s=tech&dark=1&d=0.1,1.6,4.7,7.6,13.5", 28.0), ("end", "s=end&dark=1", 5.0), ("touch", "s=touch&dark=1", 1.5),
     ("p-founder", "s=p-founder&box=panel&d=0.1,0.2,0.4,4.0,5.4,6.4", 9.0, (803, 667)), ("p-seeker", "s=p-seeker&box=panel&dark=1&d=0.1,0.2,1.6,4.9,6.0,7.1", 9.0, (803, 667)),
     ("p-app", "s=p-app&box=panel&d=0.1,0.2,2.8,3.6,4.7", 8.0, (803, 667)),
     ("l-pay", "s=l-pay&box=side&d=0.1,0.2,0.5,3.6", 6.0, (360, 667)),

@@ -14,29 +14,27 @@ FIX = {"Salon": "Solana", "salon": "Solana", "secret": "Seeker", "seeker": "Seek
 # ("cam", None, seconds) rex full screen; ("split", (phone items, panel items), seconds) phone beside a content panel;
 # ("panel", (label items, panel items), seconds) the same with a text column instead of the phone.
 # Track items: ("v", file, start, seconds[, crop]) video, ("s", image, width, x, y0, y1, seconds) still pan, ("c", clip, seconds).
-FEED = lambda y0, y1, seconds: ("s", "x-feed.jpg", 1400, 185, y0, y1, seconds)
+# ("zoom", card, seconds) slow push in on a real screenshot; ("wide", panel items, seconds) one large panel;
+# ("late", clip, None) a clip whose animation starts as the beat ends; ("hold", clip, seconds) its last frame.
+V = "voice2"
 BEATS = [
-    ("problem", [("cam1", 1.0, 8.1)], [("clip", "hacks", None)]),
-    ("play", [("cam1", 8.3, 12.4), ("cam2", 14.4, 18.9)], [("clip", "play", None)]),
-    ("password", [("cam2", 33.8, 47.9)], [("clip", "password", None)]),
-    ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("cam", None, None)]),
-    ("title", [("cam2", 59.15, 60.37, "Thumbprint takes the", 0), ("cam2", 60.33, 65.7)], [("clip", "title", None)]),
-    ("app", [("cam4", 112.6, 114.75), ("cam4", 116.98, 119.95)], [("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("c", "p-app", None)]), None)]),
-    ("founder", [("cam3", 10.2, 20.3)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 3.9), ("v", "phone-post-cfr.mp4", 19.0, 2.7), ("v", "phone-post-cfr.mp4", 82.5, None)], [("c", "p-founder", None)]), None)]),
-    ("follower", [("cam4", 0.1, 7.9), ("cam4", 12.0, 14.55, "Approved posts get a green fingerprint mark."), ("cam4", 14.7, 19.0)],
-     [("panel", ([("c", "l-follower", None)], [FEED(70, 300, 11.0), ("s", "x-popup.jpg", 1400, 185, 300, 300, 2.6), ("v", "chrome-approved.mp4", 22.5, None, "1030:855:440:215")]), None)]),
-    ("pay", [("cam2", 102.2, 107.1)], [("panel", ([("c", "l-pay", None)], [("s", "pay.png", 1560, 150, 0, 260, 3.6), ("s", "tx-ok.png", 2300, 235, 250, 300, None)]), None)]),
-    ("hacked", [("cam2", 113.1, 117.9)], [("clip", "hacked", None)]),
-    ("attack1", [("cam2", 127.4, 130.75, "First, I try to send that payment to my own wallet. Solana rejects it."), ("cam2", 133.55, 134.4)], [("clip", "attempt1", 2.3), ("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
-    ("attack3", [("cam2", 147.5, 149.56, "So I do what every hacker does."), ("cam2", 149.6, 156.7)],
-     [("clip", "attempt3", 2.3), ("split", ([("v", "phone-hack-cfr.mp4", 54.0, None)], [("s", "x-feed.jpg", 1500, 215, 40, 70, None)]), None)]),
-    ("stop", [("cam3", 200.6, 209.6)], [("split", ([("v", "phone-kill-cfr.mp4", 11.8, 2.7), ("v", "phone-kill-cfr.mp4", 19.0, 1.4), ("v", "phone-kill-cfr.mp4", 30.5, 1.2), ("v", "phone-kill-cfr.mp4", 37.0, None)],
-                                                    [("c", "p-stop", 6.9), ("s", "tx-stop.png", 3648, 440, 6110, 6150, None)]), None)]),
-    ("seeker", [("cam3", 31.2, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 12.5, None)], [("c", "p-seeker", None)]), None)]),
-    ("tech", [("cam3", 103.9, 112.5), ("cam3", 120.8, 122.58, "Android then signs a", 0), ("cam3", 122.5, 131.1), ("cam2", 242.7, 248.85)], [("clip", "tech", None)]),
-    ("close", [("cam2", 277.3, 282.8)], [("clip", "end", None)]),
+    ("sec", [(V, 1.0, 8.0)], [("zoom", "card-sec", None)]),
+    ("vitalik", [(V, 8.1, 12.0)], [("zoom", "card-vitalik", None)]),
+    ("same", [(V, 12.0, 16.9)], [("zoom", "card-both", None)]),
+    ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("late", "title", None)]),
+    ("what", [(V, 21.3, 31.5)], [("hold", "title", 3.4), ("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
+    ("owner", [(V, 32.9, 44.5)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 3.3), ("v", "phone-post-cfr.mp4", 19.0, 3.7), ("v", "phone-post-cfr.mp4", 82.5, None)], [("s", "x-feed.jpg", 1400, 185, 375, 400, None)]), None)]),
+    ("follower", [(V, 44.6, 53.5)], [("wide", [("s", "x-feed.jpg", 1700, 100, 85, 365, 5.6), ("s", "x-popup.jpg", 1700, 100, 365, 365, 2.2), ("v", "chrome-approved.mp4", 22.5, None, "1110:740:395:215")], None)]),
+    ("pay", [(V, 53.6, 59.5)], [("wide", [("s", "pay.png", 1900, 130, 0, 300, 3.2), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
+    ("hacker", [(V, 68.1, 77.8)], [("split", ([("v", "phone-hack-cfr.mp4", 50.0, None)], [("s", "x-feed.jpg", 1500, 215, 40, 70, None)]), None)]),
+    ("reject", [(V, 77.85, 87.5)], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("kill", [(V, 88.6, 98.9)], [("split", ([("v", "phone-kill-cfr.mp4", 11.8, 2.7), ("v", "phone-kill-cfr.mp4", 19.0, 1.4), ("v", "phone-kill-cfr.mp4", 30.5, 1.2), ("v", "phone-kill-cfr.mp4", 37.0, None)],
+                                          [("s", "x-feed.jpg", 1400, 185, 375, 400, 4.4), ("s", "tx-stop.png", 3648, 440, 6110, 6150, None)]), None)]),
+    ("tech", [(V, 99.0, 106.3), (V, 121.0, 132.9)], [("clip", "tech", None)]),
+    ("adopt", [(V, 133.1, 139.7)], [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, None)], None)]),
+    ("close", [(V, 141.9, 145.25, "Your password can be stolen, but your fingerprint can't.")], [("clip", "end", None)]),
 ]
-NO_PIP = ("intro", "close")
+FIX.update({"$700": "$700,000.", ",000.": "", "recreated": "created", "was": "is", "looked": "looks", "his": "his"})
 
 def run(*args):
     subprocess.run(["ffmpeg", "-v", "error", "-y", *args], check=True)
@@ -72,7 +70,7 @@ def say(take, a, b, spoken, gap):
     run("-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vn", "-ac", "1", "-ar", str(RATE),
         "-af", f"afade=t=in:d=0.02,afade=t=out:st={b - a - 0.03:.3f}:d=0.03", path)
     clip = wave.open(path)
-    captions.extend((clock + x, clock + y, FIX.get(word, word)) for x, y, word in spoken)
+    captions.extend((clock + x, clock + y, FIX.get(word, word)) for x, y, word in spoken if FIX.get(word, word))
     camera.append([take, a, clip.getnframes() / RATE])
     voice.writeframes(clip.readframes(clip.getnframes())); clock += clip.getnframes() / RATE
     silence(gap)
@@ -92,14 +90,14 @@ for name, pieces, visuals in BEATS:
             continue
         run_words, runs = [], []
         for word in words(take, start, end):
-            if run_words and word[0] - run_words[-1][1] > 0.38 and visuals[0][0] != "cam":
+            if run_words and word[0] - run_words[-1][1] > 1.0:
                 runs.append(run_words); run_words = []
             run_words.append(word)
         runs.append(run_words)
         for group in runs:
             a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.2
-            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.24)
-    silence(0.85)
+            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.45)
+    silence(3.0 if name == "close" else 1.15)
     first[name] = camera[mark][1]
     timing.append((name, begin, clock, visuals))
 voice.close()
@@ -113,28 +111,45 @@ if "voice" in sys.argv: sys.exit()
 
 # ---- Frames and masks ----
 PAPER, INK = (245, 244, 239), (20, 20, 18)
-PHONE, PANEL, LABEL = (112, 40, 450, 1000), (660, 40, 1204, 1000), (56, 40, 540, 1000)
-PIP = (1664, 824, 216)
+PHONE, PANEL, LABEL, WIDE = (112, 40, 450, 1000), (660, 40, 1204, 1000), (56, 40, 540, 1000), (210, 40, 1500, 1000)
 def mask(width, height, radius, path):
     image = Image.new("L", (width, height), 0)
     ImageDraw.Draw(image).rounded_rectangle((0, 0, width - 1, height - 1), radius, fill=255)
     image.save(path)
-def desk(path, phone):
+def desk(path, phone, box=PANEL):
     image = Image.new("RGB", (W, H), PAPER)
     draw = ImageDraw.Draw(image)
-    x, y, w, h = PANEL
+    x, y, w, h = box
     draw.rounded_rectangle((x, y + 8, x + w, y + h + 8), 36, fill=(226, 225, 218))
     if phone:
         x, y, w, h = PHONE
         draw.rounded_rectangle((x - 16, y - 10, x + w + 16, y + h + 22), 62, fill=(214, 212, 202))
         draw.rounded_rectangle((x - 16, y - 16, x + w + 16, y + h + 16), 62, fill=INK)
     image.save(path)
-mask(PHONE[2], PHONE[3], 46, f"{HERE}/work/m-phone.png"); mask(PANEL[2], PANEL[3], 36, f"{HERE}/work/m-panel.png"); mask(PIP[2], PIP[2], PIP[2] // 2, f"{HERE}/work/m-pip.png"); mask(760, 760, 60, f"{HERE}/work/m-face.png")
-desk(f"{HERE}/work/desk-phone.png", True); desk(f"{HERE}/work/desk-label.png", False)
-ring = Image.new("RGBA", (PIP[2] + 16, PIP[2] + 16), (0, 0, 0, 0))
-ImageDraw.Draw(ring).ellipse((3, 3, PIP[2] + 12, PIP[2] + 12), outline=(245, 244, 239, 255), width=6)
-ring.save(f"{HERE}/work/ring.png")
-
+mask(PHONE[2], PHONE[3], 46, f"{HERE}/work/m-phone.png"); mask(PANEL[2], PANEL[3], 36, f"{HERE}/work/m-panel.png")
+desk(f"{HERE}/work/desk-phone.png", True); desk(f"{HERE}/work/desk-label.png", False); desk(f"{HERE}/work/desk-wide.png", False, WIDE)
+mask(WIDE[2], WIDE[3], 36, f"{HERE}/work/m-wide.png")
+from PIL import ImageFont
+def card(name, images, tag):
+    """A real screenshot on a dark field with a red tag, at 4K so the push in stays sharp."""
+    canvas = Image.new("RGB", (3840, 2160), (12, 13, 12))
+    shots = [Image.open(f"{HERE}/clips/{i}").convert("RGB") for i in images]
+    height = 1500 if len(shots) == 1 else 1300
+    shots = [s.resize((round(s.width * height / s.height), height), Image.LANCZOS) for s in shots]
+    gap = 120
+    x = (3840 - sum(s.width for s in shots) - gap * (len(shots) - 1)) // 2
+    top = (2160 - height) // 2 + 90
+    draw = ImageDraw.Draw(canvas)
+    font = ImageFont.truetype(FONT, 68)
+    draw.rounded_rectangle((x, top - 170, x + draw.textlength(tag, font) + 90, top - 50), 16, fill=(255, 90, 60))
+    draw.text((x + 45, top - 152), tag, font=font, fill=(12, 13, 12))
+    for shot in shots:
+        rounded = Image.new("L", shot.size, 0); ImageDraw.Draw(rounded).rounded_rectangle((0, 0, shot.width - 1, shot.height - 1), 44, fill=255)
+        canvas.paste(shot, (x, top), rounded); x += shot.width + gap
+    canvas.save(f"{HERE}/work/{name}.png")
+card("card-sec", ["real-sec.jpg"], "HACKED  ·  JAN 9, 2024")
+card("card-vitalik", ["real-vitalik.jpg"], "HACKED  ·  SEP 9, 2023  ·  $691K STOLEN")
+card("card-both", ["real-sec.jpg", "real-vitalik.jpg"], "BOTH LOOKED REAL")
 BASE = ["-r", str(FPS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", "-an"]
 FADE = 0.2
 serial = 0
@@ -172,16 +187,19 @@ for name, begin, end, visuals in timing:
         t = f"{duration + FADE:.3f}"  # each part runs a little long so the next can fade in over it
         if kind == "clip":
             run("-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
+        elif kind == "late":
+            run("-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=start_mode=clone:start_duration={max(0, duration - 0.9):.3f}:stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
+        elif kind == "hold":
+            run("-sseof", "-0.2", "-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
+        elif kind == "zoom":
+            frames = round((duration + FADE) * FPS)
+            run("-i", f"{HERE}/work/{argument}.png", "-vf", f"zoompan=z='1+0.09*on/{frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS}", "-frames:v", str(frames), *BASE, path)
+        elif kind == "wide":
+            run("-loop", "1", "-i", f"{HERE}/work/desk-wide.png", *track(argument, WIDE[2:], duration + FADE), "-loop", "1", "-i", f"{HERE}/work/m-wide.png", "-filter_complex",
+                f"[1:v]format=rgba[p0];[p0][2:v]alphamerge[p];[0:v][p]overlay={WIDE[0]}:{WIDE[1]}", "-t", t, *BASE, path)
         elif kind == "still":
             image, y0, y1, zoom, *anchor = argument
             run("-loop", "1", "-i", f"{HERE}/clips/{image}.png", "-vf", f"scale={int(W * zoom)}:-2,crop={W}:{H}:{anchor[0] if anchor else f'(iw-{W})/2'}:'{y0}+({y1}-{y0})*t/{t}'" + (",drawbox=x=14:y=356:w=1892:h=92:color=0xff5a3c:t=6" if image == "tx-bad" else ""), "-t", t, *BASE, path)
-        elif kind == "cam":
-            take = next(p[0] for n, p, _ in BEATS if n == name)[0]
-            run("-f", "lavfi", "-i", f"color=0x0c0d0c:s={W}x{H}", "-ss", f"{first[name]:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-loop", "1", "-i", f"{HERE}/work/m-face.png", "-filter_complex",
-                f"[1:v]fps={FPS},crop=470:470:405:95,scale=760:760:flags=lanczos,eq=brightness=0.07:contrast=1.12:saturation=0.3,unsharp=5:5:0.5,format=rgba[f0];[f0][2:v]alphamerge[f];[0:v][f]overlay=1040:160,"
-                f"drawtext=fontfile={FONT}:text='BOILER BLOCKCHAIN':fontcolor=0x14f195:fontsize=34:x=130:y=330,drawtext=fontfile={FONT}:text='Joey Kokinda':fontcolor=white:fontsize=120:x=124:y=390,"
-                f"drawtext=fontfile={FONT}:text='I built Thumbprint so a hacked account':fontcolor=0xa3a79e:fontsize=42:x=130:y=560,drawtext=fontfile={FONT}:text='cannot steal your followers.':fontcolor=0xa3a79e:fontsize=42:x=130:y=616",
-                "-t", t, *BASE, path)
         else:
             side, panel = argument
             box = PHONE if kind == "split" else LABEL
@@ -190,17 +208,14 @@ for name, begin, end, visuals in timing:
                 (f"[1:v]format=rgba[s0];[s0][3:v]alphamerge[s];" if kind == "split" else "[1:v]null[s];") +
                 f"[2:v]format=rgba[p0];[p0][4:v]alphamerge[p];[0:v][p]overlay={PANEL[0]}:{PANEL[1]}[b];[b][s]overlay={box[0]}:{box[1]}", "-t", t, *BASE, path)
 
-# ---- Rex in the corner, cut exactly like the voice ----
-frames_done, files = 0, []
-for index, (take, start, seconds) in enumerate(camera):
-    if index == 0: start, seconds = start - 0.5, seconds + 0.5  # the half second of quiet before the first word
-    upto = round((0.5 + sum(c[2] for c in camera[:index + 1])) * FPS)
-    count_frames, frames_done = upto - frames_done, upto
-    if count_frames <= 0: continue
-    path = f"{HERE}/work/v/cam{index:03d}.mp4"; files.append(path)
-    run("-ss", f"{start:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vf", f"fps={FPS},crop=470:470:405:95,scale={PIP[2]}:{PIP[2]}:flags=lanczos,eq=brightness=0.07:contrast=1.12:saturation=0.3",
-        "-frames:v", str(count_frames), *BASE, path)
-open(f"{HERE}/work/v/cam.txt", "w").write("".join(f"file '{p}'\n" for p in files))
+# ---- Rex full screen for the intro line, then he shrinks into the corner and leaves ----
+intro_begin, intro_end = next((b, e) for n, b, e, _ in timing if n == "intro")
+cam_length = intro_end - intro_begin + 0.5
+run("-ss", f"{first['intro']:.3f}", "-i", f"{HERE}/footage/cam2.mp4", "-vf",
+    f"fps={FPS},scale={W}:{H}:flags=lanczos,eq=brightness=0.06:contrast=1.1:saturation=0.45,unsharp=5:5:0.4,"
+    f"drawtext=fontfile={FONT}:text='Joey Kokinda':fontcolor=white:fontsize=76:x=90:y=70:shadowcolor=black@0.6:shadowx=3:shadowy=3,"
+    f"drawtext=fontfile={FONT}:text='BOILER BLOCKCHAIN':fontcolor=0x14f195:fontsize=32:x=94:y=164:shadowcolor=black@0.6:shadowx=2:shadowy=2",
+    "-t", f"{cam_length:.3f}", *BASE, f"{HERE}/work/v/camfull.mp4")
 
 # ---- Captions: a few big words at a time, the spoken one in green ----
 def stamp(s): return f"{int(s // 3600)}:{int(s // 60 % 60):02d}:{s % 60:05.2f}"
@@ -232,16 +247,18 @@ previous = "[0:v]"
 for index in range(1, len(parts)):
     chain.append(f"{previous}[{index}:v]xfade=transition=fade:duration={FADE}:offset={starts[index]:.3f}[x{index}]"); previous = f"[x{index}]"
 n = len(parts)
-inputs += ["-f", "concat", "-safe", "0", "-i", f"{HERE}/work/v/cam.txt", "-loop", "1", "-i", f"{HERE}/work/m-pip.png", "-loop", "1", "-i", f"{HERE}/work/ring.png", "-i", f"{HERE}/work/voice-clean.wav"]
-hide = "+".join(f"between(t,{b - 0.1:.2f},{e:.2f})" for name, b, e, _ in timing if name in NO_PIP)
-chain.append(f"[{n}:v]format=rgba[c0];[c0][{n + 1}:v]alphamerge[c1];{previous}[c1]overlay={PIP[0]}:{PIP[1]}:enable='not({hide})'[o1];[o1][{n + 2}:v]overlay={PIP[0] - 8}:{PIP[1] - 8}:enable='not({hide})'[o2]")
+inputs += ["-i", f"{HERE}/work/v/camfull.mp4", "-i", f"{HERE}/work/voice-clean.wav"]
+ease = f"(pow(clip((t-{intro_end - 0.8:.3f})/0.7,0,1),2)*(3-2*clip((t-{intro_end - 0.8:.3f})/0.7,0,1)))"
+chain.append(f"[{n}:v]format=yuva420p,fade=t=in:st=0:d=0.15:alpha=1,fade=t=out:st={cam_length - 0.3:.3f}:d=0.3:alpha=1,setpts=PTS+{intro_begin:.3f}/TB,"
+             f"scale=w='2*trunc(960-710*{ease})':h='2*trunc(540-399*{ease})':eval=frame[cam];"
+             f"{previous}[cam]overlay=x='(main_w-overlay_w-64)*{ease}':y='(main_h-overlay_h-64)*{ease}':enable='between(t,{intro_begin:.3f},{intro_begin + cam_length:.3f})':eof_action=pass[o2]")
 chain.append(f"[o2]ass={HERE}/work/captions.ass:fontsdir={HERE}/work[v]")
 music = f"{HERE}/footage/music.mp3"
 if os.path.exists(music):
     inputs += ["-stream_loop", "-1", "-i", music]
-    chain.append(f"[{n + 4}:a]volume=0.2,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 3}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
+    chain.append(f"[{n + 2}:a]volume=0.2,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 1}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
 else:
-    chain.append(f"[{n + 3}:a]anull[a]")
+    chain.append(f"[{n + 1}:a]anull[a]")
 open(f"{HERE}/work/graph.txt", "w").write(";\n".join(chain))
 run(*inputs, "-/filter_complex", f"{HERE}/work/graph.txt", "-map", "[v]", "-map", "[a]", "-t", f"{clock:.2f}", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
     "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", f"{HERE}/out/thumbprint-demo.mp4")
