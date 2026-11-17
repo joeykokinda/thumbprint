@@ -193,8 +193,8 @@ for name, begin, end, visuals in timing:
 # ---- Rex in the corner, cut exactly like the voice ----
 frames_done, files = 0, []
 for index, (take, start, seconds) in enumerate(camera):
-    if index == 0: start, seconds = start - 0.5, seconds  # the half second of quiet before the first word is already in seconds
-    upto = round((sum(c[2] for c in camera[:index + 1])) * FPS)
+    if index == 0: start, seconds = start - 0.5, seconds + 0.5  # the half second of quiet before the first word
+    upto = round((0.5 + sum(c[2] for c in camera[:index + 1])) * FPS)
     count_frames, frames_done = upto - frames_done, upto
     if count_frames <= 0: continue
     path = f"{HERE}/work/v/cam{index:03d}.mp4"; files.append(path)
