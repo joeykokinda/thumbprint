@@ -7,7 +7,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 W, H, FPS, RATE = 1920, 1080, 30, 48000
 FONT = f"{HERE}/work/SchibstedGrotesk.ttf"
 FIX = {"Salon": "Solana", "salon": "Solana", "secret": "Seeker", "seeker": "Seeker", "seeker's": "Seeker's", "thumbprint": "Thumbprint", "thumbprint.": "Thumbprint.",
-       "P256": "P-256", "Kokenda": "Kokinda", "his": "its", "precompiled": "precompile", "improve": "approve"}
+       "P256": "P-256", "Kokenda": "Kokinda", "his": "its", "precompiled": "precompile", "improve": "approve", "product": "project", "wrote": "write", "product's": "project's"}
 
 # id, voice pieces (take, start, end[, exact words[, gap after]]), visuals
 # Visual kinds: ("clip", name, seconds) full-screen animation; ("still", (image, y0, y1, zoom[, x]), seconds) page pan;
@@ -19,22 +19,21 @@ BEATS = [
     ("problem", [("cam1", 1.0, 8.1)], [("clip", "hacks", None)]),
     ("play", [("cam1", 8.3, 12.4), ("cam2", 14.4, 18.9)], [("clip", "play", None)]),
     ("password", [("cam2", 33.8, 47.9)], [("clip", "password", None)]),
-    ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so that a hacked account cannot steal your followers.")], [("cam", None, None)]),
+    ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("cam", None, None)]),
     ("title", [("cam2", 59.15, 60.37, "Thumbprint takes the", 0), ("cam2", 60.33, 65.7)], [("clip", "title", None)]),
-    ("pieces", [("cam3", 0.2, 9.7)], [("clip", "pieces", None)]),
-    ("app", [("cam4", 112.6, 119.95)], [("split", ([("v", "phone-kill-cfr.mp4", 2.0, None)], [("c", "p-app", None)]), None)]),
+    ("app", [("cam4", 112.6, 119.95)], [("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("c", "p-app", None)]), None)]),
     ("founder", [("cam3", 10.2, 20.3)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 3.9), ("v", "phone-post-cfr.mp4", 19.0, 2.7), ("v", "phone-post-cfr.mp4", 82.5, None)], [("c", "p-founder", None)]), None)]),
     ("follower", [("cam4", 0.1, 7.9), ("cam4", 12.0, 14.55, "Approved posts get a green fingerprint mark."), ("cam4", 14.7, 19.0)],
-     [("panel", ([("c", "l-follower", None)], [FEED(70, 300, 10.4), ("s", "x-popup.jpg", 1400, 185, 300, 300, 2.2), ("v", "chrome-approved.mp4", 21.0, None, "1030:855:440:215")]), None)]),
-    ("pay", [("cam2", 102.2, 107.1)], [("still", ("pay", 0, 420, 1.0), 3.2), ("still", ("tx-ok", 230, 330, 1.3), None)]),
+     [("panel", ([("c", "l-follower", None)], [FEED(70, 300, 11.0), ("s", "x-popup.jpg", 1400, 185, 300, 300, 2.6), ("v", "chrome-approved.mp4", 22.5, None, "1030:855:440:215")]), None)]),
+    ("pay", [("cam2", 102.2, 107.1)], [("panel", ([("c", "l-pay", None)], [("s", "pay.png", 1560, 150, 0, 260, 3.6), ("s", "tx-ok.png", 2300, 235, 250, 300, None)]), None)]),
     ("hacked", [("cam2", 113.1, 117.9)], [("clip", "hacked", None)]),
-    ("attack1", [("cam2", 127.4, 130.75, "First, I try to send that payment to my own wallet. Solana rejects it."), ("cam2", 133.55, 134.4)], [("clip", "attempt1", 1.9), ("still", ("tx-bad", 6440, 6480, 1.9, 440), None)]),
+    ("attack1", [("cam2", 127.4, 130.75, "First, I try to send that payment to my own wallet. Solana rejects it."), ("cam2", 133.55, 134.4)], [("clip", "attempt1", 2.3), ("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
     ("attack3", [("cam2", 147.5, 149.56, "So I do what every hacker does."), ("cam2", 149.6, 156.7)],
      [("clip", "attempt3", 2.3), ("split", ([("v", "phone-hack-cfr.mp4", 54.0, None)], [("s", "x-feed.jpg", 1500, 215, 40, 70, None)]), None)]),
     ("stop", [("cam3", 200.6, 209.6)], [("split", ([("v", "phone-kill-cfr.mp4", 11.8, 2.7), ("v", "phone-kill-cfr.mp4", 19.0, 1.4), ("v", "phone-kill-cfr.mp4", 30.5, 1.2), ("v", "phone-kill-cfr.mp4", 37.0, None)],
                                                     [("c", "p-stop", 6.9), ("s", "tx-stop.png", 3648, 440, 6230, 6270, None)]), None)]),
-    ("seeker", [("cam3", 31.2, 41.3)], [("split", ([("v", "phone-post-cfr.mp4", 9.0, 9.5), ("v", "phone-kill-cfr.mp4", 0.0, None)], [("c", "p-seeker", None)]), None)]),
-    ("tech", [("cam3", 103.9, 112.5), ("cam3", 120.8, 122.58, "Android then signs a", 0), ("cam3", 122.5, 131.1), ("cam3", 131.8, 132.86), ("cam3", 133.38, 135.8), ("cam2", 242.7, 248.85)], [("clip", "tech", None)]),
+    ("seeker", [("cam3", 31.2, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 12.5, None)], [("c", "p-seeker", None)]), None)]),
+    ("tech", [("cam3", 103.9, 112.5), ("cam3", 120.8, 122.58, "Android then signs a", 0), ("cam3", 122.5, 131.1), ("cam2", 242.7, 248.85)], [("clip", "tech", None)]),
     ("close", [("cam2", 277.3, 282.8)], [("clip", "end", None)]),
 ]
 NO_PIP = ("intro", "close")
@@ -98,9 +97,9 @@ for name, pieces, visuals in BEATS:
             run_words.append(word)
         runs.append(run_words)
         for group in runs:
-            a, b = group[0][0] - 0.06, min(group[-1][1], group[-1][0] + 0.9) + 0.14
-            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.1)
-    silence(0.4)
+            a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.2
+            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.24)
+    silence(0.85)
     first[name] = camera[mark][1]
     timing.append((name, begin, clock, visuals))
 voice.close()
@@ -130,7 +129,7 @@ def desk(path, phone):
         draw.rounded_rectangle((x - 16, y - 10, x + w + 16, y + h + 22), 62, fill=(214, 212, 202))
         draw.rounded_rectangle((x - 16, y - 16, x + w + 16, y + h + 16), 62, fill=INK)
     image.save(path)
-mask(PHONE[2], PHONE[3], 46, f"{HERE}/work/m-phone.png"); mask(PANEL[2], PANEL[3], 36, f"{HERE}/work/m-panel.png"); mask(PIP[2], PIP[2], PIP[2] // 2, f"{HERE}/work/m-pip.png")
+mask(PHONE[2], PHONE[3], 46, f"{HERE}/work/m-phone.png"); mask(PANEL[2], PANEL[3], 36, f"{HERE}/work/m-panel.png"); mask(PIP[2], PIP[2], PIP[2] // 2, f"{HERE}/work/m-pip.png"); mask(760, 760, 60, f"{HERE}/work/m-face.png")
 desk(f"{HERE}/work/desk-phone.png", True); desk(f"{HERE}/work/desk-label.png", False)
 ring = Image.new("RGBA", (PIP[2] + 16, PIP[2] + 16), (0, 0, 0, 0))
 ImageDraw.Draw(ring).ellipse((3, 3, PIP[2] + 12, PIP[2] + 12), outline=(245, 244, 239, 255), width=6)
@@ -175,13 +174,14 @@ for name, begin, end, visuals in timing:
             run("-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
         elif kind == "still":
             image, y0, y1, zoom, *anchor = argument
-            run("-loop", "1", "-i", f"{HERE}/clips/{image}.png", "-vf", f"scale={int(W * zoom)}:-2,crop={W}:{H}:{anchor[0] if anchor else f'(iw-{W})/2'}:'{y0}+({y1}-{y0})*t/{t}'", "-t", t, *BASE, path)
+            run("-loop", "1", "-i", f"{HERE}/clips/{image}.png", "-vf", f"scale={int(W * zoom)}:-2,crop={W}:{H}:{anchor[0] if anchor else f'(iw-{W})/2'}:'{y0}+({y1}-{y0})*t/{t}'" + (",drawbox=x=14:y=356:w=1892:h=92:color=0xff5a3c:t=6" if image == "tx-bad" else ""), "-t", t, *BASE, path)
         elif kind == "cam":
             take = next(p[0] for n, p, _ in BEATS if n == name)[0]
-            run("-ss", f"{first[name]:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vf",
-                f"crop=iw*0.78:ih*0.78:iw*0.11:ih*0.06,scale={W}:{H}:flags=lanczos,eq=brightness=0.08:contrast=1.1:saturation=0.9,unsharp=5:5:0.5,"
-                f"drawbox=x=0:y=820:w=iw:h=260:color=0x141412@0.55:t=fill,drawtext=fontfile={FONT}:text='JOEY KOKINDA':fontcolor=white:fontsize=74:x=110:y=850,"
-                f"drawtext=fontfile={FONT}:text='Boiler Blockchain  ·  Thumbprint':fontcolor=0x14f195:fontsize=38:x=112:y=940", "-t", t, *BASE, path)
+            run("-f", "lavfi", "-i", f"color=0x0c0d0c:s={W}x{H}", "-ss", f"{first[name]:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-loop", "1", "-i", f"{HERE}/work/m-face.png", "-filter_complex",
+                f"[1:v]fps={FPS},crop=470:470:405:95,scale=760:760:flags=lanczos,eq=brightness=0.07:contrast=1.12:saturation=0.3,unsharp=5:5:0.5,format=rgba[f0];[f0][2:v]alphamerge[f];[0:v][f]overlay=1040:160,"
+                f"drawtext=fontfile={FONT}:text='BOILER BLOCKCHAIN':fontcolor=0x14f195:fontsize=34:x=130:y=330,drawtext=fontfile={FONT}:text='Joey Kokinda':fontcolor=white:fontsize=120:x=124:y=390,"
+                f"drawtext=fontfile={FONT}:text='I built Thumbprint so a hacked account':fontcolor=0xa3a79e:fontsize=42:x=130:y=560,drawtext=fontfile={FONT}:text='cannot steal your followers.':fontcolor=0xa3a79e:fontsize=42:x=130:y=616",
+                "-t", t, *BASE, path)
         else:
             side, panel = argument
             box = PHONE if kind == "split" else LABEL
@@ -198,7 +198,7 @@ for index, (take, start, seconds) in enumerate(camera):
     count_frames, frames_done = upto - frames_done, upto
     if count_frames <= 0: continue
     path = f"{HERE}/work/v/cam{index:03d}.mp4"; files.append(path)
-    run("-ss", f"{start:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vf", f"fps={FPS},crop=560:560:360:60,scale={PIP[2]}:{PIP[2]}:flags=lanczos,eq=brightness=0.08:contrast=1.1:saturation=0.9",
+    run("-ss", f"{start:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vf", f"fps={FPS},crop=470:470:405:95,scale={PIP[2]}:{PIP[2]}:flags=lanczos,eq=brightness=0.07:contrast=1.12:saturation=0.3",
         "-frames:v", str(count_frames), *BASE, path)
 open(f"{HERE}/work/v/cam.txt", "w").write("".join(f"file '{p}'\n" for p in files))
 
