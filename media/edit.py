@@ -31,7 +31,7 @@ BEATS = [
     ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "780:648:500:270"), ("v", "live-hack-screen.mp4", 38.0, None, "780:648:500:270")]), None)]),
     ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
     ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("split", ([(*TOUR, 9.0, None)], [PAY]), None)]),
-    ("kill", [(V, 120.3, 122.6, "And the owner doesn't", 0.12), (V, 123.4, 126.05, "have to win the account back first.", 0.5), (V, 126.08, 130.1)],
+    ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
      [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
                  [("v", "live-kill-screen.mp4", 100.0, 4.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
     ("tech", [(V, 131.3, 143.0)], [("clip", "tech", None)]),
