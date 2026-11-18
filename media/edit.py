@@ -25,15 +25,15 @@ BEATS = [
     ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
     ("what", [(V, 21.0, 28.7)], [("hold", "title", 1.2), ("clip", "d-flow", None)]),
     ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("clip", "d-setup", None)]),
-    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("v", "live-post-screen.mp4", 150.0, None, "780:648:500:270")]), None)]),
-    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 216.5, 1.8, "900:600:440:270"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
-    ("pay", [(V, 60.7, 68.5)], [("clip", "d-pay", 7.4), ("wide", [("s", "tx-ok.png", 2800, 290, 335, 335, None)], None)]),
-    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "780:648:500:270"), ("v", "live-hack-screen.mp4", 38.0, None, "780:648:500:270")]), None)]),
-    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("clip", "d-reject", 2.9), ("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("c", "p-founder", None)]), None)]),
+    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "660:440:580:300"), ("v", "live-post-screen.mp4", 216.5, 1.8, "660:440:580:300"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
+    ("pay", [(V, 60.7, 68.5)], [("clip", "d-pay", None)]),
+    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "600:498:600:330"), ("v", "live-hack-screen.mp4", 38.0, None, "600:498:600:330")]), None)]),
+    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("clip", "d-reject", None)]),
     ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("clip", "d-locked", None)]),
     ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
      [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
-                 [("v", "live-kill-screen.mp4", 100.0, 4.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
+                 [("v", "live-kill-screen.mp4", 100.0, 4.2, "600:498:590:500"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "600:498:590:500"), ("v", "live-kill-screen.mp4", 170.0, None, "560:465:420:615")]), None)]),
     ("tech", [(V, 131.3, 133.4), (V, 133.6, 136.7), (V, 136.8, 140.6), (V, 141.2, 143.0)], [("clip", "tech", None)]),
     ("adopt", [(V, 156.7, 161.4)], [("clip", "adopt", None)]),
     ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
@@ -139,7 +139,7 @@ json.dump({"timing": [(n, b, e) for n, b, e, _ in timing], "words": captions}, o
 if "voice" in sys.argv: sys.exit()
 
 # ---- Frames and masks ----
-PAPER, INK = (245, 244, 239), (20, 20, 18)
+PAPER, INK = (12, 13, 12), (65, 69, 63)
 PHONE, PANEL, LABEL, WIDE = (112, 40, 450, 1000), (660, 40, 1204, 1000), (56, 40, 540, 1000), (210, 40, 1500, 1000)
 def mask(width, height, radius, path):
     image = Image.new("L", (width, height), 0)
@@ -149,10 +149,10 @@ def desk(path, phone, box=PANEL):
     image = Image.new("RGB", (W, H), PAPER)
     draw = ImageDraw.Draw(image)
     x, y, w, h = box
-    draw.rounded_rectangle((x, y + 8, x + w, y + h + 8), 36, fill=(226, 225, 218))
+    draw.rounded_rectangle((x, y + 8, x + w, y + h + 8), 36, fill=(28, 30, 28))
     if phone:
         x, y, w, h = PHONE
-        draw.rounded_rectangle((x - 16, y - 10, x + w + 16, y + h + 22), 62, fill=(214, 212, 202))
+        draw.rounded_rectangle((x - 16, y - 10, x + w + 16, y + h + 22), 62, fill=(28, 30, 28))
         draw.rounded_rectangle((x - 16, y - 16, x + w + 16, y + h + 16), 62, fill=INK)
     image.save(path)
 mask(PHONE[2], PHONE[3], 46, f"{HERE}/work/m-phone.png"); mask(PANEL[2], PANEL[3], 36, f"{HERE}/work/m-panel.png")
