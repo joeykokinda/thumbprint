@@ -25,15 +25,15 @@ BEATS = [
     ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
     ("what", [(V, 21.0, 28.7)], [("hold", "title", 1.2), ("clip", "d-flow", None)]),
     ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("clip", "d-setup", None)]),
-    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("c", "p-founder", None)]), None)]),
-    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "660:440:580:300"), ("v", "live-post-screen.mp4", 216.5, 1.8, "660:440:580:300"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
+    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.8), ("v", "live-post-phone.mp4", 167.0, None)], [("c", "p-founder", None)]), None)]),
+    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 6.1, "660:440:580:300"), ("v", "live-post-screen.mp4", 216.5, 1.9, "660:440:580:300"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
     ("pay", [(V, 60.7, 68.5)], [("clip", "d-pay", None)]),
-    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "600:498:600:330"), ("v", "live-hack-screen.mp4", 38.0, None, "600:498:600:330")]), None)]),
+    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.8), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.5, "600:498:600:330"), ("v", "live-hack-screen.mp4", 38.0, None, "600:498:600:330")]), None)]),
     ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("clip", "d-reject", None)]),
     ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("clip", "d-locked", None)]),
     ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
-     [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
-                 [("v", "live-kill-screen.mp4", 100.0, 4.2, "600:498:590:500"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "600:498:590:500"), ("v", "live-kill-screen.mp4", 170.0, None, "560:465:420:615")]), None)]),
+     [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.4), ("v", "live-kill-phone.mp4", 29.6, 2.2), ("v", "live-kill-phone.mp4", 141.0, None)],
+                 [("v", "live-kill-screen.mp4", 100.0, 4.6, "600:498:590:500"), ("v", "live-kill-screen.mp4", 155.0, 2.6, "600:498:590:500"), ("v", "live-kill-screen.mp4", 170.0, None, "560:465:420:615")]), None)]),
     ("tech", [(V, 131.3, 133.4), (V, 133.6, 136.7), (V, 136.8, 140.6), (V, 141.2, 143.0)], [("clip", "tech", None)]),
     ("adopt", [(V, 156.7, 161.4)], [("clip", "adopt", None)]),
     ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
@@ -54,9 +54,14 @@ os.makedirs(f"{HERE}/work/v", exist_ok=True)
 voice = wave.open(f"{HERE}/work/voice.wav", "wb")
 voice.setnchannels(1); voice.setsampwidth(2); voice.setframerate(RATE)
 clock, captions, timing, count, camera, first = 0.0, [], [], 0, [], {}
+# Pauses carry the room's own background sound: dead silence between sentences is what makes cuts audible.
+run("-ss", "75.4", "-t", "1.5", "-i", f"{HERE}/footage/{V}.mp4", "-vn", "-ac", "1", "-ar", str(RATE), "-af", "volume=1.6", f"{HERE}/work/room.wav")
+ROOM = array.array("h", wave.open(f"{HERE}/work/room.wav").readframes(10 ** 9))
+SLOW = 0.93  # narration tempo; the on-camera take stays at 1 so lips match
 def silence(seconds):
     global clock
-    voice.writeframes(b"\0\0" * int(seconds * RATE)); clock += int(seconds * RATE) / RATE
+    n = int(seconds * RATE)
+    voice.writeframes(array.array("h", (ROOM[i % len(ROOM)] for i in range(n))).tobytes()); clock += n / RATE
     if camera: camera[-1][2] += int(seconds * RATE) / RATE
 def speech(take, start, end):
     """Trims a hand-picked range to where the voice actually starts and stops."""
@@ -93,8 +98,10 @@ def say(take, a, b, spoken, gap):
     """Appends one stretch of audio; spoken is [(offset from a, offset end, word)]."""
     global clock, count
     path = f"{HERE}/work/n/{count:03d}.wav"; count += 1
+    tempo = 1 if take.startswith("cam") else SLOW
+    spoken = [(x / tempo, y / tempo, word) for x, y, word in spoken]
     run("-ss", f"{a:.3f}", "-t", f"{b - a:.3f}", "-i", f"{HERE}/footage/{take}.mp4", "-vn", "-ac", "1", "-ar", str(RATE),
-        "-af", f"{tone(take)}afade=t=in:d=0.02,afade=t=out:st={b - a - 0.03:.3f}:d=0.03", path)
+        "-af", f"{tone(take)}atempo={tempo},afade=t=in:d=0.04,afade=t=out:st={(b - a) / tempo - 0.12:.3f}:d=0.12", path)
     clip = wave.open(path)
     samples = array.array("h", clip.readframes(clip.getnframes()))
     loud = sorted(abs(x) for x in samples)[int(len(samples) * 0.95)] or 1  # takes come from different mics: match their level
@@ -124,9 +131,9 @@ for name, pieces, visuals in BEATS:
             run_words.append(word)
         runs.append(run_words)
         for group in runs:
-            a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.2
-            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.7)
-    silence(2.6 if name == "close" else 0.9)
+            a, b = group[0][0] - 0.1, min(group[-1][1], group[-1][0] + 0.9) + 0.3
+            say(take, a, b, [(w[0] - a, w[1] - a, w[2]) for w in group], 0.85)
+    silence(2.6 if name == "close" else 1.2)
     first[name] = camera[mark][1]
     timing.append((name, begin, clock, visuals))
 voice.close()
