@@ -11,6 +11,15 @@ payment destination approvals.
 Public deployment: [thumbprint.pyras.org](https://thumbprint.pyras.org).
 Network: **Solana devnet; test funds only**.
 
+## Try it
+
+| You have | Do this |
+| --- | --- |
+| Just a browser | Open [/demo](https://thumbprint.pyras.org/demo): a real payment, a swapped-recipient attack and a suspended payment, each linked to its devnet transaction. |
+| A devnet wallet | Open [/pay?handle=x:spekthumbprint](https://thumbprint.pyras.org/pay?handle=x:spekthumbprint). The page reads the approval straight from Solana and pays only the approved address. |
+| Chrome | Download [the repo zip](https://github.com/joeykokinda/thumbprint/archive/refs/heads/main.zip), open `chrome://extensions`, turn on Developer mode, click Load unpacked and pick the `extension` folder. Then open [@Spekthumbprint](https://x.com/Spekthumbprint) on X: approved posts get a green mark that opens the onchain proof, unapproved posts get a warning. |
+| A Seeker | Install [thumbprint.apk](https://thumbprint.pyras.org/thumbprint.apk) to enroll your own project. |
+
 Build progress, acceptance criteria and open items: [TODO.md](TODO.md).
 Hardware policy and setup: [attestation/README.md](attestation/README.md).
 
