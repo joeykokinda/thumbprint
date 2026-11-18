@@ -23,19 +23,19 @@ BEATS = [
     ("vitalik", [(V, 8.4, 12.1)], [("zoom", "card-vitalik", None)]),
     ("same", [(V, 13.1, 18.2)], [("zoom", "card-both", None)]),
     ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
-    ("what", [(V, 21.0, 28.7)], [("hold", "title", 2.6), ("split", ([(*TOUR, 3.0, None)], [HOME]), None)]),
-    ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("split", ([(*TOUR, 0.0, None)], [("s", "home.png", 1400, 98, 420, 700, None)]), None)]),
+    ("what", [(V, 21.0, 28.7)], [("hold", "title", 1.2), ("clip", "d-flow", None)]),
+    ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("clip", "d-setup", None)]),
     ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("v", "live-post-screen.mp4", 150.0, None, "780:648:500:270")]), None)]),
     ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 216.5, 1.8, "900:600:440:270"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
-    ("pay", [(V, 60.7, 68.5)], [("split", ([(*TOUR, 8.5, None)], [PAY]), 5.6), ("wide", [("s", "pay.png", 1900, 130, 0, 300, 1.4), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
+    ("pay", [(V, 60.7, 68.5)], [("clip", "d-pay", 7.4), ("wide", [("s", "tx-ok.png", 2800, 290, 335, 335, None)], None)]),
     ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "780:648:500:270"), ("v", "live-hack-screen.mp4", 38.0, None, "780:648:500:270")]), None)]),
-    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
-    ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("split", ([(*TOUR, 9.0, None)], [PAY]), None)]),
+    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("clip", "d-reject", 2.9), ("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("clip", "d-locked", None)]),
     ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
      [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
                  [("v", "live-kill-screen.mp4", 100.0, 4.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
     ("tech", [(V, 131.3, 133.4), (V, 133.6, 136.7), (V, 136.8, 140.6), (V, 141.2, 143.0)], [("clip", "tech", None)]),
-    ("adopt", [(V, 156.7, 161.4)], [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, None)], None)]),
+    ("adopt", [(V, 156.7, 161.4)], [("clip", "adopt", None)]),
     ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
 ]
 FIX.update({"$700": "$700,000.", ",000.": "", "his": "his", "secured": "secure"})
@@ -223,7 +223,7 @@ for name, begin, end, visuals in timing:
             run("-sseof", "-0.2", "-i", f"{HERE}/clips/{argument}.mp4", "-vf", f"tpad=stop_mode=clone:stop_duration=90,scale={W}:{H}", "-t", t, *BASE, path)
         elif kind == "zoom":
             frames = round((duration + FADE) * FPS)
-            run("-i", f"{HERE}/work/{argument}.png", "-vf", f"zoompan=z='1+0.09*on/{frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS}", "-frames:v", str(frames), *BASE, path)
+            run("-i", f"{HERE}/work/{argument}.png", "-vf", f"zoompan=z='1':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps={FPS}", "-frames:v", str(frames), *BASE, path)
         elif kind == "wide":
             run("-loop", "1", "-i", f"{HERE}/work/desk-wide.png", *track(argument, WIDE[2:], duration + FADE), "-loop", "1", "-i", f"{HERE}/work/m-wide.png", "-filter_complex",
                 f"[1:v]format=rgba[p0];[p0][2:v]alphamerge[p];[0:v][p]overlay={WIDE[0]}:{WIDE[1]}", "-t", t, *BASE, path)
@@ -286,7 +286,7 @@ chain.append(f"[o2]ass={HERE}/work/captions.ass:fontsdir={HERE}/work[v]")
 music = f"{HERE}/footage/music.mp3"
 if os.path.exists(music):
     inputs += ["-stream_loop", "-1", "-i", music]
-    chain.append(f"[{n + 2}:a]volume=0.3,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 1}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
+    chain.append(f"[{n + 2}:a]volume=0.12,afade=t=in:d=1.5,afade=t=out:st={clock - 3:.2f}:d=3[m0];[{n + 1}:a]asplit[say][key];[m0][key]sidechaincompress=threshold=0.03:ratio=6:attack=40:release=900[m];[say][m]amix=inputs=2:duration=first:normalize=0[a]")
 else:
     chain.append(f"[{n + 1}:a]anull[a]")
 open(f"{HERE}/work/graph.txt", "w").write(";\n".join(chain))
