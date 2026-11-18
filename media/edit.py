@@ -16,29 +16,30 @@ FIX = {"Salon": "Solana", "salon": "Solana", "secret": "Seeker", "seeker": "Seek
 # Track items: ("v", file, start, seconds[, crop]) video, ("s", image, width, x, y0, y1, seconds) still pan, ("c", clip, seconds).
 # ("zoom", card, seconds) slow push in on a real screenshot; ("wide", panel items, seconds) one large panel;
 # ("late", clip, None) a clip whose animation starts as the beat ends; ("hold", clip, seconds) its last frame.
-V = "voice2"
+V = "voice3"
+TOUR, HOME, PAY = ("v", "phone-tour-cfr.mp4"), ("s", "home.png", 1400, 98, 0, 420, None), ("s", "pay.png", 1400, 98, 0, 120, None)
 BEATS = [
-    ("sec", [(V, 1.0, 8.0)], [("zoom", "card-sec", None)]),
-    ("vitalik", [(V, 8.1, 12.0)], [("zoom", "card-vitalik", None)]),
-    ("same", [(V, 12.0, 16.9)], [("zoom", "card-both", None)]),
-    ("intro", [("cam2", 68.8, 74.75, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account cannot steal your followers.")], [("late", "title", None)]),
-    ("what", [(V, 21.3, 31.5)], [("hold", "title", 3.4), ("split", ([("v", "phone-tour-cfr.mp4", 3.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
-    ("owner", [(V, 32.9, 44.5)], [("split", ([("v", "live-post-phone.mp4", 12.5, 7.0), ("v", "live-post-phone.mp4", 168.0, None)], [("v", "live-post-screen.mp4", 150.0, None, "780:648:500:270")]), None)]),
-    ("review", [("cam4", 124.1, 131.2)], [("wide", [("v", "phone-post-cfr.mp4", 17.0, None, "1200:800:0:945")], None)]),
-    ("follower", [(V, 44.6, 53.5)], [("wide", [("v", "live-post-screen.mp4", 209.6, 4.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 216.5, 2.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
-    ("pay", [(V, 53.5, 54.72, "It's the same for money."), ("cam2", 90.6, 96.1), ("cam2", 102.15, 107.1)],
-     [("split", ([("v", "phone-tour-cfr.mp4", 8.5, None)], [("s", "pay.png", 1400, 98, 0, 120, None)]), 7.6), ("wide", [("s", "pay.png", 1900, 130, 0, 300, 3.2), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
-    ("hacker", [(V, 68.1, 77.8)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 3.2), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 6.2, "780:648:500:270"), ("v", "live-hack-screen.mp4", 38.0, None, "780:648:500:270")]), None)]),
-    ("reject", [(V, 77.85, 81.3)], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
-    ("change", [("cam2", 135.5, 140.5), (V, 81.9, 87.5)], [("split", ([("v", "phone-tour-cfr.mp4", 9.0, None)], [("s", "pay.png", 1400, 98, 0, 120, None)]), None)]),
-    ("kill", [(V, 88.6, 98.9)], [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.4), ("v", "live-kill-phone.mp4", 29.6, 2.2), ("v", "live-kill-phone.mp4", 141.0, None)], [("v", "live-kill-screen.mp4", 100.0, 4.6, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
-    ("seeker", [("cam3", 31.1, 41.3)], [("split", ([("v", "phone-tour-cfr.mp4", 0.0, None)], [("s", "home.png", 1400, 98, 0, 420, None)]), None)]),
-    ("tech", [(V, 100.5, 106.3), (V, 121.0, 132.9)], [("clip", ("tech", 1.5), None)]),
-    ("adopt", [(V, 133.1, 139.7), ("cam3", 240.0, 242.3, "Today it's a browser extension and a Seeker app,", 0.25), ("cam3", 247.6, 250.4, "and the same check can live inside wallets.")],
-     [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, 7.2), ("s", "home.png", 1500, 0, 0, 300, None)], None)]),
-    ("close", [(V, 141.9, 145.25, "Your password can be stolen, but your fingerprint can't.")], [("clip", "end", None)]),
+    ("sec", [(V, 1.6, 7.8)], [("zoom", "card-sec", None)]),
+    ("vitalik", [(V, 8.4, 12.1)], [("zoom", "card-vitalik", None)]),
+    ("same", [(V, 13.1, 18.2)], [("zoom", "card-both", None)]),
+    ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
+    ("what", [(V, 21.0, 28.7)], [("hold", "title", 2.6), ("split", ([(*TOUR, 3.0, None)], [HOME]), None)]),
+    ("setup", [(V, 32.7, 38.2, "Setup happens once. Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("split", ([(*TOUR, 0.0, None)], [("s", "home.png", 1400, 98, 420, 700, None)]), None)]),
+    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("v", "live-post-screen.mp4", 150.0, None, "780:648:500:270")]), None)]),
+    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 216.5, 1.8, "900:600:440:270"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
+    ("pay", [(V, 60.7, 68.5)], [("split", ([(*TOUR, 8.5, None)], [PAY]), 5.6), ("wide", [("s", "pay.png", 1900, 130, 0, 300, 1.4), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
+    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.6), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "780:648:500:270"), ("v", "live-hack-screen.mp4", 38.0, None, "780:648:500:270")]), None)]),
+    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("still", ("tx-bad", 6450, 6450, 1.9, 440), None)]),
+    ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("split", ([(*TOUR, 9.0, None)], [PAY]), None)]),
+    ("kill", [(V, 120.3, 122.6, "And the owner doesn't", 0.12), (V, 123.4, 126.05, "have to win the account back first.", 0.5), (V, 126.08, 130.1)],
+     [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
+                 [("v", "live-kill-screen.mp4", 100.0, 4.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
+    ("tech", [(V, 131.3, 143.0)], [("clip", "tech", None)]),
+    ("lost", [(V, 148.3, 153.4)], [("split", ([(*TOUR, 0.0, None)], [HOME]), None)]),
+    ("adopt", [(V, 156.7, 161.4)], [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, None)], None)]),
+    ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
 ]
-FIX.update({"$700": "$700,000.", ",000.": "", "recreated": "created", "was": "is", "looked": "looks", "his": "his"})
+FIX.update({"$700": "$700,000.", ",000.": "", "his": "his", "secured": "secure"})
 
 def run(*args):
     subprocess.run(["ffmpeg", "-v", "error", "-y", *args], check=True)
@@ -241,7 +242,7 @@ for name, begin, end, visuals in timing:
 # ---- Rex full screen for the intro line, then he shrinks into the corner and leaves ----
 intro_begin, intro_end = next((b, e) for n, b, e, _ in timing if n == "intro")
 cam_length = intro_end - intro_begin + 0.5
-run("-ss", f"{first['intro']:.3f}", "-i", f"{HERE}/footage/cam2.mp4", "-vf",
+run("-ss", f"{first['intro']:.3f}", "-i", f"{HERE}/footage/cam5.mp4", "-vf",
     f"fps={FPS},crop=iw*0.84:ih*0.84:iw*0.08:ih*0.05,scale={W}:{H}:flags=lanczos,eq=brightness=0.1:contrast=1.14:saturation=0.45,unsharp=5:5:0.4,"
     f"drawtext=fontfile={FONT}:text='Joey Kokinda':fontcolor=white:fontsize=76:x=90:y=70:shadowcolor=black@0.6:shadowx=3:shadowy=3,"
     f"drawtext=fontfile={FONT}:text='BOILER BLOCKCHAIN':fontcolor=0x14f195:fontsize=32:x=94:y=164:shadowcolor=black@0.6:shadowx=2:shadowy=2",
