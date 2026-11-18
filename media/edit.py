@@ -24,7 +24,7 @@ BEATS = [
     ("same", [(V, 13.1, 18.2)], [("zoom", "card-both", None)]),
     ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
     ("what", [(V, 21.0, 28.7)], [("hold", "title", 2.6), ("split", ([(*TOUR, 3.0, None)], [HOME]), None)]),
-    ("setup", [(V, 32.7, 38.2, "Setup happens once. Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("split", ([(*TOUR, 0.0, None)], [("s", "home.png", 1400, 98, 420, 700, None)]), None)]),
+    ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("split", ([(*TOUR, 0.0, None)], [("s", "home.png", 1400, 98, 420, 700, None)]), None)]),
     ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.4), ("v", "live-post-phone.mp4", 167.0, None)], [("v", "live-post-screen.mp4", 150.0, None, "780:648:500:270")]), None)]),
     ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 5.6, "900:600:440:270"), ("v", "live-post-screen.mp4", 216.5, 1.8, "900:600:440:270"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
     ("pay", [(V, 60.7, 68.5)], [("split", ([(*TOUR, 8.5, None)], [PAY]), 5.6), ("wide", [("s", "pay.png", 1900, 130, 0, 300, 1.4), ("s", "tx-ok.png", 2800, 290, 305, 365, None)], None)]),
@@ -34,8 +34,7 @@ BEATS = [
     ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
      [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.2), ("v", "live-kill-phone.mp4", 29.6, 2.0), ("v", "live-kill-phone.mp4", 141.0, None)],
                  [("v", "live-kill-screen.mp4", 100.0, 4.2, "780:648:500:270"), ("v", "live-kill-screen.mp4", 155.0, 2.4, "780:648:500:270"), ("v", "live-kill-screen.mp4", 170.0, None, "740:610:400:465")]), None)]),
-    ("tech", [(V, 131.3, 143.0)], [("clip", "tech", None)]),
-    ("lost", [(V, 148.3, 153.4)], [("split", ([(*TOUR, 0.0, None)], [HOME]), None)]),
+    ("tech", [(V, 131.3, 133.4), (V, 133.6, 136.7), (V, 136.8, 140.6), (V, 141.2, 143.0)], [("clip", "tech", None)]),
     ("adopt", [(V, 156.7, 161.4)], [("wide", [("s", "x-feed.jpg", 1700, 100, 200, 365, None)], None)]),
     ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
 ]
