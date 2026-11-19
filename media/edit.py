@@ -16,27 +16,28 @@ FIX = {"Salon": "Solana", "salon": "Solana", "secret": "Seeker", "seeker": "Seek
 # Track items: ("v", file, start, seconds[, crop]) video, ("s", image, width, x, y0, y1, seconds) still pan, ("c", clip, seconds).
 # ("zoom", card, seconds) slow push in on a real screenshot; ("wide", panel items, seconds) one large panel;
 # ("late", clip, None) a clip whose animation starts as the beat ends; ("hold", clip, seconds) its last frame.
-V = "voice3"
+V = "voice4"
 TOUR, HOME, PAY = ("v", "phone-tour-cfr.mp4"), ("s", "home.png", 1400, 98, 0, 420, None), ("s", "pay.png", 1400, 98, 0, 120, None)
 BEATS = [
-    ("sec", [(V, 1.6, 7.8)], [("zoom", "card-sec", None)]),
-    ("vitalik", [(V, 8.4, 12.1)], [("zoom", "card-vitalik", None)]),
-    ("same", [(V, 13.1, 18.2)], [("zoom", "card-both", None)]),
+    ("sec", [(V, 1.3, 7.9)], [("zoom", "card-sec", None)]),
+    ("vitalik", [(V, 12.9, 16.9)], [("zoom", "card-vitalik", None)]),
+    ("same", [(V, 17.6, 22.3)], [("zoom", "card-both", None)]),
     ("intro", [("cam5", 29.2, 34.9, "I'm Joey Kokinda from Boiler Blockchain, and I built Thumbprint so a hacked account can't steal your followers.")], [("late", "title", None)]),
-    ("what", [(V, 21.0, 28.7)], [("hold", "title", 1.2), ("clip", "d-flow", None)]),
-    ("setup", [(V, 32.7, 34.12, "Setup happens once."), (V, 34.2, 38.2, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("clip", "d-setup", None)]),
-    ("owner", [(V, 38.9, 45.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 5.8), ("v", "live-post-phone.mp4", 167.0, None)], [("c", "p-founder", None)]), None)]),
-    ("follower", [(V, 47.7, 56.2)], [("wide", [("v", "live-post-screen.mp4", 209.6, 6.1, "660:440:580:300"), ("v", "live-post-screen.mp4", 216.5, 1.9, "660:440:580:300"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
-    ("pay", [(V, 60.7, 68.5)], [("clip", "d-pay", None)]),
-    ("hacker", [(V, 77.1, 80.2), (V, 83.2, 86.5)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 2.8), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.5, "600:498:600:330"), ("v", "live-hack-screen.mp4", 38.0, None, "600:498:600:330")]), None)]),
-    ("reject", [(V, 97.3, 100.74, "I try to send over the payment to my own wallet. Solana rejects it.")], [("clip", "d-reject", None)]),
-    ("change", [(V, 100.75, 106.4), (V, 108.2, 110.9)], [("clip", "d-locked", None)]),
-    ("kill", [(V, 123.4, 126.05, "And the owner doesn't have to win the account back first.", 0.5), (V, 126.08, 130.1)],
-     [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.4), ("v", "live-kill-phone.mp4", 29.6, 2.2), ("v", "live-kill-phone.mp4", 141.0, None)],
-                 [("v", "live-kill-screen.mp4", 100.0, 4.6, "600:498:590:500"), ("v", "live-kill-screen.mp4", 155.0, 2.6, "600:498:590:500"), ("v", "live-kill-screen.mp4", 170.0, None, "560:465:420:615")]), None)]),
-    ("tech", [(V, 131.3, 133.4), (V, 133.6, 136.7), (V, 136.8, 140.6), (V, 141.2, 143.0)], [("clip", "tech", None)]),
-    ("adopt", [(V, 156.7, 161.4)], [("clip", "adopt", None)]),
-    ("close", [(V, 162.4, 165.0)], [("clip", "end", None)]),
+    ("what", [(V, 23.0, 36.1)], [("hold", "title", 1.2), ("clip", "d-flow", None)]),
+    ("setup", [(V, 37.1, 38.3, "Setup happens once."), (V, 38.6, 42.8, "Connect the Seeker's wallet, prove you control the X account, and the phone creates a fingerprint key.")], [("clip", "d-setup", None)]),
+    ("owner", [(V, 44.3, 51.8)], [("split", ([("v", "live-post-phone.mp4", 12.5, 6.0), ("v", "live-post-phone.mp4", 167.0, None)], [("c", "p-founder", None)]), None)]),
+    ("follower", [(V, 52.9, 58.5)], [("wide", [("v", "live-post-screen.mp4", 209.6, 3.7, "660:440:580:300"), ("v", "live-post-screen.mp4", 216.5, 1.3, "660:440:580:300"), ("v", "live-post-screen.mp4", 227.5, None, "1200:800:360:240")], None)]),
+    ("pay", [(V, 59.9, 61.2, "It works for payments too."), (V, 61.36, 67.4, "I read the treasury address on my phone, touch the sensor, and it's approved on Solana. The payment page only pays that exact address.")], [("clip", "d-pay", None)]),
+    ("hacker", [(V, 69.3, 76.9)], [("split", ([("v", "live-hack-phone.mp4", 6.0, 3.2), ("v", "live-hack-phone.mp4", 21.5, None)], [("v", "live-hack-screen.mp4", 18.0, 4.2, "600:498:600:330"), ("v", "live-hack-screen.mp4", 38.0, None, "600:498:600:330")]), None)]),
+    ("reject", [(V, 78.5, 82.7)], [("clip", "d-reject", None)]),
+    ("change", [(V, 83.5, 89.8), (V, 91.9, 94.7)], [("clip", "d-locked", None)]),
+    ("kill", [(V, 96.7, 102.7)],
+     [("split", ([("v", "live-kill-phone.mp4", 17.8, 2.4), ("v", "live-kill-phone.mp4", 29.6, 1.5), ("v", "live-kill-phone.mp4", 141.0, None)],
+                 [("v", "live-kill-screen.mp4", 100.0, 3.2, "600:498:590:500"), ("v", "live-kill-screen.mp4", 155.0, 1.8, "600:498:590:500"), ("v", "live-kill-screen.mp4", 170.0, None, "560:465:420:615")]), None)]),
+    ("tech", [(V, 118.9, 120.5), (V, 120.7, 123.65), (V, 123.78, 127.3)], [("clip", "tech", None)]),
+    ("lost", [(V, 128.4, 132.0)], [("clip", "d-lost", None)]),
+    ("adopt", [(V, 135.5, 140.7)], [("clip", "adopt", None)]),
+    ("close", [(V, 141.3, 144.1)], [("clip", "end", None)]),
 ]
 FIX.update({"$700": "$700,000.", ",000.": "", "his": "his", "secured": "secure"})
 
@@ -55,9 +56,9 @@ voice = wave.open(f"{HERE}/work/voice.wav", "wb")
 voice.setnchannels(1); voice.setsampwidth(2); voice.setframerate(RATE)
 clock, captions, timing, count, camera, first = 0.0, [], [], 0, [], {}
 # Pauses carry the room's own background sound: dead silence between sentences is what makes cuts audible.
-run("-ss", "75.4", "-t", "1.5", "-i", f"{HERE}/footage/{V}.mp4", "-vn", "-ac", "1", "-ar", str(RATE), "-af", "volume=1.6", f"{HERE}/work/room.wav")
+run("-ss", "0.0", "-t", "1.5", "-i", f"{HERE}/footage/{V}.mp4", "-vn", "-ac", "1", "-ar", str(RATE), "-af", "volume=1.28", f"{HERE}/work/room.wav")
 ROOM = array.array("h", wave.open(f"{HERE}/work/room.wav").readframes(10 ** 9))
-SLOW = 0.93  # narration tempo; the on-camera take stays at 1 so lips match
+SLOW = 1  # narration tempo; the on-camera take stays at 1 so lips match
 def silence(seconds):
     global clock
     n = int(seconds * RATE)
@@ -142,7 +143,7 @@ for name, begin, end, _ in timing:
     said = " ".join(w[2] for w in captions if begin <= w[0] < end)
     print(f"{name:9s} {begin:6.1f} {end - begin:5.1f}s  {said[:90]}")
 print(f"total {clock:.1f}s")
-json.dump({"timing": [(n, b, e) for n, b, e, _ in timing], "words": captions}, open(f"{HERE}/work/cut.json", "w"))
+json.dump({"timing": [(n, b, e) for n, b, e, _ in timing], "words": captions, "intro": first["intro"], "total": clock}, open(f"{HERE}/work/cut.json", "w"))
 if "voice" in sys.argv: sys.exit()
 
 # ---- Frames and masks ----
