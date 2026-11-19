@@ -202,10 +202,9 @@ const scenes: Record<string, React.FC> = {
   follower: () => {
     const at = useAt();
     return <>
-      <Box x={130} y={60} w={900} h={60}><Label>What followers see on X</Label></Box>
-      <Laptop x={285} y={150} scale={1.5}>
+      <Pop style={{ position: "absolute", left: 210, top: 50, width: 1500, height: 893, borderRadius: 28, overflow: "hidden", boxShadow: "0 40px 90px rgba(0,0,0,.6)" }}>
         <Reel parts={[{ at: 0, src: "live-post-screen.mp4", start: 209.6, crop: [580, 300, 660, 393] }, { at: at("click"), src: "live-post-screen.mp4", start: 216.5, crop: [580, 300, 660, 393] }, { at: at("proof"), src: "live-post-screen.mp4", start: 227.5, crop: [360, 240, 1200, 715] }]} />
-      </Laptop>
+      </Pop>
     </>;
   },
   pay: () => {
