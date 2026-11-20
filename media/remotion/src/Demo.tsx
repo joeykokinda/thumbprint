@@ -304,7 +304,7 @@ const Scene: React.FC<{ name: string; frames: number }> = ({ name, frames }) => 
   return <AbsoluteFill style={{ opacity }}><Beat.Provider value={BEATS[name]}><Content /></Beat.Provider></AbsoluteFill>;
 };
 
-export const Demo: React.FC = () => (
+export const Demo: React.FC<{ captions?: boolean }> = ({ captions = true }) => (
   <AbsoluteFill style={{ background: `radial-gradient(1200px 700px at 50% 0%, #12231b, ${INK} 70%)`, fontFamily: SANS, color: "#f1f3ee" }}>
     <Audio src={staticFile("voice-clean.wav")} />
     <Audio src={staticFile("music.mp3")} loop volume={f => 0.07 * interpolate(f, [0, 45, TOTAL - 90, TOTAL], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
@@ -312,6 +312,6 @@ export const Demo: React.FC = () => (
       const from = Math.round(begin * FPS), frames = Math.round(end * FPS) - from;
       return <Sequence key={name} from={from} durationInFrames={frames}><Scene name={name} frames={frames} /></Sequence>;
     })}
-    <AbsoluteFill style={{ transform: "translateY(118px)" }}><WordCaptions preset="clean" fontSize={44} accentColor={GREEN} words={WORDS.map(([start, end, text]) => ({ text, startFrame: Math.round(start * FPS), endFrame: Math.round(end * FPS) }))} /></AbsoluteFill>
+    {captions && <AbsoluteFill style={{ transform: "translateY(118px)" }}><WordCaptions preset="clean" fontSize={44} accentColor={GREEN} words={WORDS.map(([start, end, text]) => ({ text, startFrame: Math.round(start * FPS), endFrame: Math.round(end * FPS) }))} /></AbsoluteFill>}
   </AbsoluteFill>
 );
